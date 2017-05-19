@@ -5,12 +5,12 @@
  * Jun 22, 2011
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include "extmem.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-Buffer *initBuffer(size_t bufSize, size_t blkSize, Buffer *buf)
+Buffer* initBuffer(size_t bufSize, size_t blkSize, Buffer* buf)
 {
     int i;
 
@@ -21,8 +21,7 @@ Buffer *initBuffer(size_t bufSize, size_t blkSize, Buffer *buf)
     buf->numFreeBlk = buf->numAllBlk;
     buf->data = (unsigned char*)malloc(bufSize * sizeof(unsigned char));
 
-    if (!buf->data)
-    {
+    if (!buf->data) {
         perror("Buffer Initialization Failed!\n");
         return NULL;
     }
@@ -31,25 +30,23 @@ Buffer *initBuffer(size_t bufSize, size_t blkSize, Buffer *buf)
     return buf;
 }
 
-void freeBuffer(Buffer *buf)
+void freeBuffer(Buffer* buf)
 {
     free(buf->data);
 }
 
-unsigned char *getNewBlockInBuffer(Buffer *buf)
+unsigned char* getNewBlockInBuffer(Buffer* buf)
 {
-    unsigned char *blkPtr;
+    unsigned char* blkPtr;
 
-    if (buf->numFreeBlk == 0)
-    {
+    if (buf->numFreeBlk == 0) {
         perror("Buffer is full!\n");
         return NULL;
     }
 
     blkPtr = buf->data;
 
-    while (blkPtr < buf->data + (buf->blkSize + 1) * buf->numAllBlk)
-    {
+    while (blkPtr < buf->data + (buf->blkSize + 1) * buf->numAllBlk) {
         if (*blkPtr == BLOCK_AVAILABLE)
             break;
         else
@@ -61,8 +58,9 @@ unsigned char *getNewBlockInBuffer(Buffer *buf)
     return blkPtr + 1;
 }
 
-void freeBlockInBuffer(unsigned char *blk, Buffer *buf)
+void freeBlockInBuffer(unsigned char* blk, Buffer* buf)
 {
+    memset(blk, 0, buf->blkSize);
     *(blk - 1) = BLOCK_AVAILABLE;
     buf->numFreeBlk++;
 }
@@ -73,8 +71,7 @@ int dropBlockOnDisk(unsigned int addr)
 
     sprintf(filename, "%d.blk", addr);
 
-    if (remove(filename) == -1)
-    {
+    if (remove(filename) == -1) {
         perror("Dropping Block Fails!\n");
         return -1;
     }
@@ -82,22 +79,20 @@ int dropBlockOnDisk(unsigned int addr)
     return 0;
 }
 
-unsigned char *readBlockFromDisk(unsigned int addr, Buffer *buf)
+unsigned char* readBlockFromDisk(unsigned int addr, Buffer* buf)
 {
     char filename[40];
     unsigned char *blkPtr, *bytePtr;
     char ch;
 
-    if (buf->numFreeBlk == 0)
-    {
+    if (buf->numFreeBlk == 0) {
         perror("Buffer Overflows!\n");
         return NULL;
     }
 
     blkPtr = buf->data;
 
-    while (blkPtr < buf->data + (buf->blkSize + 1) * buf->numAllBlk)
-    {
+    while (blkPtr < buf->data + (buf->blkSize + 1) * buf->numAllBlk) {
         if (*blkPtr == BLOCK_AVAILABLE)
             break;
         else
@@ -105,10 +100,9 @@ unsigned char *readBlockFromDisk(unsigned int addr, Buffer *buf)
     }
 
     sprintf(filename, "%d.blk", addr);
-    FILE *fp = fopen(filename, "r");
+    FILE* fp = fopen(filename, "r");
 
-    if (!fp)
-    {
+    if (!fp) {
         perror("Reading Block Failed!\n");
         return NULL;
     }
@@ -117,8 +111,7 @@ unsigned char *readBlockFromDisk(unsigned int addr, Buffer *buf)
     blkPtr++;
     bytePtr = blkPtr;
 
-    while ((ch = fgetc(fp)) != EOF && bytePtr < blkPtr + buf->blkSize)
-    {
+    while ((ch = fgetc(fp)) != EOF && bytePtr < blkPtr + buf->blkSize) {
         *bytePtr = ch;
         bytePtr++;
     }
@@ -129,16 +122,15 @@ unsigned char *readBlockFromDisk(unsigned int addr, Buffer *buf)
     return blkPtr;
 }
 
-int writeBlockToDisk(unsigned char *blkPtr, unsigned int addr, Buffer *buf)
+int writeBlockToDisk(unsigned char* blkPtr, unsigned int addr, Buffer* buf)
 {
     char filename[40];
-    unsigned char *bytePtr;
+    unsigned char* bytePtr;
 
     sprintf(filename, "%d.blk", addr);
-    FILE *fp = fopen(filename, "w");
+    FILE* fp = fopen(filename, "w");
 
-    if (!fp)
-    {
+    if (!fp) {
         perror("Writing Block Failed!\n");
         return -1;
     }

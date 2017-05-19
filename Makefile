@@ -25,3 +25,4 @@ clean:
 
 blk:
 	-rm -rf *.blk
+	-rm -rf R S
