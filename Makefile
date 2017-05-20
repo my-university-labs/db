@@ -1,28 +1,24 @@
-all:test main
+all:main
 
-test:extmem.o test.o
-	gcc -o test test.o extmem.o
+main:build/extmem.o build/main.o build/operation.o build/utils.o
+	gcc -o main build/main.o build/extmem.o build/operation.o build/utils.o
 
-main:extmem.o main.o operation.o
-	gcc -o main main.o extmem.o operation.o
+build/extmem.o:extmem.c extmem.h
+	gcc -c $< -o $@
 
-extmem.o:extmem.c extmem.h
-	gcc -c extmem.c
+build/test.o:test.c extmem.h
+	gcc -c $< -o $@
 
-test.o:test.c extmem.h
-	gcc -c test.c
+build/utils.o:utils.c extmem.h utils.h
+	gcc -c $< -o $@
+build/operation.o:operation.c operation.h  utils.h
+	gcc -c $< -o $@
 
-operation.o:operation.c operation.h extmem.h
-	gcc -c operation.c
+build/main.o:main.c extmem.h operation.h utils.h
+	gcc -c $< -o $@
 
-main.o:main.c extmem.h operation.h
-	gcc -c main.c
-
+.PHONY:clean blk
 clean:
-	-rm -rf *.o
-	-rm -rf test
+	-rm -rf build/*.o
 	-rm -rf main
-
-blk:
-	-rm -rf *.blk
-	-rm -rf R S
+	-rm -rf blk/*
