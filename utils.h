@@ -16,6 +16,7 @@
 
 #define MAX 100000
 
+#define TMP_SIZE 1000
 #define TMPBASE 500000
 
 #include "extmem.h"
@@ -23,28 +24,18 @@
 #define TRUE 1
 #define FALSE 0
 
-struct buf_info {
-    int times;
-    short offsets[7];
-    int addrs[7];
-    unsigned char* pointers[7];
-};
-
 struct segment {
     int times;
-    unsigned int addrs[255];
-    char flag[255];
+    unsigned int addrs[TMP_SIZE];
+    char flag[TMP_SIZE];
 };
 
 struct LoserTree {
     short loserTree[MERGE_N];
     int leaves[MERGE_N + 1];
-    short flag[MERGE_N + 1];
-    short offset[MERGE_N];
+    short offset[MERGE_N + 1];
     unsigned char* blk[MERGE_N + 1];
 };
-
-typedef struct buf_info BufferInfo;
 
 typedef struct segment TmpSegments;
 

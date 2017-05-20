@@ -1,6 +1,7 @@
 /* author: dongchangzhang */
 /* time: Sat 20 May 2017 02:58:46 PM CST */
 #include "utils.h"
+#include "operation.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -177,14 +178,16 @@ void blk_sort(unsigned char* blk, int times, int offset)
 static void init_tmp(TmpSegments* tmps)
 {
     tmps->times = 0;
-    memset(&tmps->flag, 0, sizeof(tmps->flag));
+    for (int i = 0; i < TMP_SIZE; ++i) {
+        tmps->flag[i] = FALSE;
+    }
 }
 static int insert_tmp(TmpSegments* tmps, unsigned int addr)
 {
-    if (tmps->times >= 255) {
+    if (tmps->times >= TMP_SIZE) {
         return -1;
     }
-    for (int i = 0; i < 255; ++i) {
+    for (int i = 0; i < TMP_SIZE; ++i) {
         if (tmps->flag[i] == FALSE) {
             ++tmps->times;
             tmps->addrs[i] = addr;
@@ -194,9 +197,44 @@ static int insert_tmp(TmpSegments* tmps, unsigned int addr)
     }
     return -1;
 }
+static int insert_tmp_from_back(TmpSegments* tmps, unsigned int addr)
+{
+    if (tmps->times >= TMP_SIZE) {
+        return -1;
+    }
+    if (tmps->times == 0) {
+        ++tmps->times;
+        tmps->addrs[0] = addr;
+        tmps->flag[0] = TRUE;
+        return 0;
+    }
+    for (int i = TMP_SIZE - 2; i >= 0; --i) {
+        if (tmps->flag[i] == TRUE && tmps->flag[i + i] == FALSE) {
+            ++tmps->times;
+            tmps->addrs[i + 1] = addr;
+            tmps->flag[i + 1] = TRUE;
+            return 0;
+        }
+    }
+    printf("ERROR");
+    exit(1);
+    return -1;
+}
+static int check_tmp(TmpSegments* tmps)
+{
+    int times = 0;
+    for (int i = 0; i < TMP_SIZE; ++i) {
+        if (tmps->flag[i] == TRUE) {
+            ++times;
+        }
+    }
+    if (times == 1)
+        return 0;
+    return -1;
+}
 static int erase_tmp(TmpSegments* tmps, int index)
 {
-    if (index < 0 || index >= 255 || tmps->flag[index] == FALSE) {
+    if (index < 0 || index >= TMP_SIZE || tmps->flag[index] == FALSE) {
         return -1;
     }
     --tmps->times;
@@ -229,124 +267,7 @@ void blks_sort(unsigned int start_addr, int offset, TmpSegments* tmps)
         start_addr = next_addr;
     }
 }
-// static void init_loser_tree(LoserTree* tree)
-// {
-//     for (int i = 0; i < MERGE_N; ++i) {
-//         tree->flag[i] = FALSE;
-//         tree->blk[i] = NULL;
-//     }
-// }
-// static void loser_tree_arrange(LoserTree* tree)
-// {
 
-// }
-// static void loser_tree_load(LoserTree* tree, TmpSegments* tmps, Buffer* buf)
-// {
-//     int index = 0;
-//     unsigned int addr;
-//     unsigned char* blk;
-//     init_loser_tree(tree);
-//     /* 初始化每一个叶子节点 */
-//     for (int i = 0; i < MERGE_N; ++i) {
-//         /* 对每一个已经排好序的段 */
-//         for (; index < 255; ++index) {
-//             /* 找到待排序的段 并且缓存有空间*/
-//             if (tmps->flag[index] == TRUE && buf->numFreeBlk > 0) {
-//                 /* 获取该段的地址 标记*/
-//                 addr = tmps->addrs[index];
-//                 tmps->flag[index] = FALSE;
-//                 /* read this blk */
-//                 blk = getNewBlockInBuffer(buf);
-//                 read_blk(addr, buf, &blk);
-//                 /* add this point into tree */
-//                 tree->blk[i] = blk;
-//                 tree->flag[i] = TRUE;
-//                 tree->offset[i] = 0;
-//                 tree->tree[MERGE_N +i] = i;
-//             }
-//         }
-//     }
-// }
-// static void init_info(BufferInfo* info)
-// {
-//     int i;
-//     info->times = 0;
-//     for (i = 0; i < 7; ++i) {
-//         info->pointers[i] = NULL;
-//         info->addrs[i] = -1;
-//         info->offsets[i] = 0;
-//     }
-// }
-// static int get_new_info_index(BufferInfo* info)
-// {
-//     int i;
-//     if (info->times >= 7)
-//         return -1;
-//     for (i = 0; i < 7 && info->pointers[i]; ++i) {
-//         ;
-//     }
-//     return i;
-// }
-// static int get_next_addr_from_info(BufferInfo* info)
-// {
-//     int i, addr;
-//     for (i = 0; i < 7 && info->addrs[i] == -1; ++i) {
-//         ;
-//     }
-//     addr = info->addrs[i];
-//     info->addrs[i] = -1;
-//     return addr;
-// }
-// static void insert_info(BufferInfo* info, unsigned char* blk, unsigned int addr)
-// {
-//     int i = get_new_info_index(info);
-//     ++info->times;
-//     info->pointers[i] = blk;
-//     info->offsets[i] = 0;
-//     for (i = 0; i < 7 && info->addrs[i] != -1; ++i)
-//         ;
-//     info->addrs[i] = addr;
-// }
-// static void update_info(BufferInfo* info, int index)
-// {
-//     ++info->offsets[index];
-// }
-// static void check_info(Buffer* buf, BufferInfo* info)
-// {
-//     int i;
-//     for (i = 0; i < 7; ++i) {
-//         if (info->offsets[i] >= 7) {
-//             // next_addr = get_next_addr_from_info(info);
-//             // save(info->pointers[i] + 8 * 7 + 4, next_addr);
-//             // write_blk(info->pointers[i], save_addr, buf);
-//             freeBlockInBuffer(info->pointers[i], buf);
-//             --info->times;
-//             info->pointers[i] = NULL;
-//             info->offsets[i] = 0;
-//         }
-//     }
-// }
-// static int get_min(BufferInfo* info, int offset, int* result)
-// {
-//     int i, tmp = -1, r = -1;
-//     *result = MAX;
-//     for (i = 0; i < 7; ++i) {
-//         if (info->pointers[i]) {
-//             memcpy(&tmp, info->pointers[i] + offset * sizeof(int), sizeof(int));
-//             if (tmp < *result) {
-//                 *result = tmp;
-//                 r = i;
-//             }
-//         }
-//     }
-//     return r;
-// }
-
-// void loser_tree()
-// {
-//     Buffer buf;
-//     init_buf(&buf);
-// }
 static void adjust(int i, LoserTree* tree)
 {
     int parent = (i + MERGE_N - 1) / 2;
@@ -364,24 +285,30 @@ static void adjust(int i, LoserTree* tree)
 
 static void initLoserTree(LoserTree* tree, TmpSegments* tmps, Buffer* buf)
 {
-
+    int have;
     int index = 0;
     unsigned int addr;
     unsigned char* blk;
     for (int i = 0; i < MERGE_N; ++i) {
-        for (; index < 255; ++index) {
+        have = 0;
+        for (; index < TMP_SIZE; ++index) {
             if (tmps->flag[index] == TRUE && buf->numFreeBlk > 0) {
+                have = 1;
                 addr = tmps->addrs[index];
-                tmps->flag[index] = FALSE;
+                printf("1___________________%d %d\n", index, addr);
                 read_blk(addr, buf, &blk);
-                tree->blk[i] = blk;
-                tree->flag[i] = TRUE;
-                tree->offset[i] = 0;
+                printf("2___________________\n");
+
+                tree->blk[i + 1] = blk;
+                tree->offset[i + 1] = 0;
                 tree->leaves[i + 1] = convert(blk);
+                erase_tmp(tmps, index);
                 ++index;
                 break;
             }
         }
+        if (!have)
+            tree->leaves[i + 1] = TMPBASE;
     }
     tree->leaves[0] = -1;
     for (int i = 0; i < MERGE_N; i++)
@@ -390,42 +317,101 @@ static void initLoserTree(LoserTree* tree, TmpSegments* tmps, Buffer* buf)
         adjust(i, tree);
 }
 
-static int get_min_from_loser_tree(LoserTree* tree, Buffer* buf)
+static int get_min_from_loser_tree(LoserTree* tree, Buffer* buf, int value[2])
 {
     int index = tree->loserTree[0];
     int result = tree->leaves[index];
+    if (result == TMPBASE)
+        return result;
+    value[0] = convert(tree->blk[index] + tree->offset[index] * 8);
+    value[1] = convert(tree->blk[index] + tree->offset[index] * 8 + 4);
+    int times = convert(tree->blk[index] + 7 * 8);
     int offset = ++tree->offset[index];
-    if (offset != 7) {
+    if (offset < times) {
         tree->leaves[index] = convert(tree->blk[index] + tree->offset[index] * 8);
     } else {
-        tree->leaves[index] = TMPBASE;
+        int addr = convert(tree->blk[index] + 7 * 8 + 4);
+        printf("addr : %d\n", addr);
+        if (addr == 0)
+            tree->leaves[index] = TMPBASE;
+        else {
+            freeBlockInBuffer(tree->blk[index], buf);
+            read_blk(addr, buf, &tree->blk[index]);
+            tree->leaves[index] = convert(tree->blk[index]);
+            tree->offset[index] = 0;
+            // printf("value %d --------------------------\n", tree->leaves[index]);
+        }
     }
     adjust(index, tree);
     return result;
 }
+
 void n_merge_sort(unsigned int start_addr, int offset)
 {
     Buffer buf;
     TmpSegments tmps;
     LoserTree tree;
+    int value[2];
 
+    int r, in, loc;
     int index, tmp;
-    int loc = 0;
-    int times, next_addr = start_addr;
+    int seg_start_addr, seg_now_addr, seg_next_addr;
     unsigned char *blk = NULL, *rblk = NULL;
     /* init */
-    init_buf(&buf);
+
     blks_sort(start_addr, offset, &tmps);
-    initLoserTree(&tree, &tmps, &buf);
+
+    // for (int i = 0; i < 255; ++i) {
+    //     if (tmps.flag[i] == TRUE) {
+    //         printf("______________________%d\n", i);
+
+    //         read_data(tmps.addrs[i]);
+    //     }
+    // }
     /* use this to save result */
-    rblk = getNewBlockInBuffer(&buf);
-    int r;
-    int j = 0;
-    printf("_________________\n");
     while (1) {
-        r = get_min_from_loser_tree(&tree, &buf);
-        printf("%d - %d\n", r, ++j);
-        if (r == TMPBASE)
-            break;
+        in = 0;
+        loc = 0;
+
+        seg_start_addr = get_next_addr() + TMPBASE;
+        seg_now_addr = seg_start_addr;
+        init_buf(&buf);
+        rblk = getNewBlockInBuffer(&buf);
+
+        initLoserTree(&tree, &tmps, &buf);
+
+        while ((r = get_min_from_loser_tree(&tree, &buf, value)) != TMPBASE) {
+            in = 1;
+            if (loc >= 7) {
+                loc = 0;
+                seg_next_addr = get_next_addr() + TMPBASE;
+                save(rblk + 7 * 8, 7);
+                save(rblk + 7 * 8 + 4, seg_next_addr);
+                write_blk(rblk, seg_now_addr, &buf);
+                seg_now_addr = seg_next_addr;
+                freeBlockInBuffer(rblk, &buf);
+                rblk = getNewBlockInBuffer(&buf);
+            }
+            save(rblk + loc * 8, value[0]);
+            save(rblk + loc * 8 + 4, value[1]);
+            ++loc;
+        }
+
+        save(rblk + 7 * 8, 7);
+        save(rblk + 7 * 8 + 4, 0);
+        write_blk(rblk, seg_now_addr, &buf);
+        freeBlockInBuffer(rblk, &buf);
+        rblk = getNewBlockInBuffer(&buf);
+        insert_tmp_from_back(&tmps, seg_start_addr);
+
+        freeBuffer(&buf);
+        if (check_tmp(&tmps) == 0) {
+            read_data(seg_start_addr);
+
+            printf("-----------\n");
+            return;
+        }
+        // read_data(seg_start_addr);
     }
+    read_data(seg_start_addr);
 }
