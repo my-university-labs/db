@@ -24,6 +24,8 @@
 #define TRUE 1
 #define FALSE 0
 
+
+
 struct segment {
     int times;
     unsigned int addrs[TMP_SIZE];
@@ -69,7 +71,7 @@ void blk_sort(unsigned char* blk, int times, int offset);
 
 void blks_sort(unsigned int start_addr, int offset, TmpSegments* tmps);
 
-void n_merge_sort(unsigned int start_addr, int offset);
+int n_merge_sort(unsigned int start_addr, int offset);
 
 void loser_tree();
 void test_loser_tree(int start);

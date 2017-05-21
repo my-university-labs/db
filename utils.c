@@ -220,18 +220,6 @@ static int insert_tmp_from_back(TmpSegments* tmps, unsigned int addr)
     exit(1);
     return -1;
 }
-static int check_tmp(TmpSegments* tmps)
-{
-    int times = 0;
-    for (int i = 0; i < TMP_SIZE; ++i) {
-        if (tmps->flag[i] == TRUE) {
-            ++times;
-        }
-    }
-    if (times == 1)
-        return 0;
-    return -1;
-}
 static int erase_tmp(TmpSegments* tmps, int index)
 {
     if (index < 0 || index >= TMP_SIZE || tmps->flag[index] == FALSE) {
@@ -249,6 +237,7 @@ void blks_sort(unsigned int start_addr, int offset, TmpSegments* tmps)
     unsigned char* blk = NULL;
     init_buf(&buf);
     init_tmp(tmps);
+    int i = 0;
     while (start_addr) {
         /* read blk */
         read_blk(start_addr, &buf, &blk);
@@ -295,10 +284,7 @@ static void initLoserTree(LoserTree* tree, TmpSegments* tmps, Buffer* buf)
             if (tmps->flag[index] == TRUE && buf->numFreeBlk > 0) {
                 have = 1;
                 addr = tmps->addrs[index];
-                printf("1___________________%d %d\n", index, addr);
                 read_blk(addr, buf, &blk);
-                printf("2___________________\n");
-
                 tree->blk[i + 1] = blk;
                 tree->offset[i + 1] = 0;
                 tree->leaves[i + 1] = convert(blk);
@@ -331,7 +317,6 @@ static int get_min_from_loser_tree(LoserTree* tree, Buffer* buf, int value[2])
         tree->leaves[index] = convert(tree->blk[index] + tree->offset[index] * 8);
     } else {
         int addr = convert(tree->blk[index] + 7 * 8 + 4);
-        printf("addr : %d\n", addr);
         if (addr == 0)
             tree->leaves[index] = TMPBASE;
         else {
@@ -339,36 +324,28 @@ static int get_min_from_loser_tree(LoserTree* tree, Buffer* buf, int value[2])
             read_blk(addr, buf, &tree->blk[index]);
             tree->leaves[index] = convert(tree->blk[index]);
             tree->offset[index] = 0;
-            // printf("value %d --------------------------\n", tree->leaves[index]);
         }
     }
     adjust(index, tree);
     return result;
 }
 
-void n_merge_sort(unsigned int start_addr, int offset)
+int n_merge_sort(unsigned int start_addr, int offset)
 {
     Buffer buf;
     TmpSegments tmps;
     LoserTree tree;
     int value[2];
 
+    int start_save_index = 0;
+    char filename[64];
+    FILE* fp;
+
     int r, in, loc;
     int index, tmp;
     int seg_start_addr, seg_now_addr, seg_next_addr;
     unsigned char *blk = NULL, *rblk = NULL;
-    /* init */
-
     blks_sort(start_addr, offset, &tmps);
-
-    // for (int i = 0; i < 255; ++i) {
-    //     if (tmps.flag[i] == TRUE) {
-    //         printf("______________________%d\n", i);
-
-    //         read_data(tmps.addrs[i]);
-    //     }
-    // }
-    /* use this to save result */
     while (1) {
         in = 0;
         loc = 0;
@@ -380,6 +357,12 @@ void n_merge_sort(unsigned int start_addr, int offset)
 
         initLoserTree(&tree, &tmps, &buf);
 
+        if (tmps.times == 0) {
+            start_save_index = 1;
+            sprintf(filename, "blk/index%d.blk", seg_now_addr);
+            fp = fopen(filename, "w");
+        }
+
         while ((r = get_min_from_loser_tree(&tree, &buf, value)) != TMPBASE) {
             in = 1;
             if (loc >= 7) {
@@ -388,8 +371,9 @@ void n_merge_sort(unsigned int start_addr, int offset)
                 save(rblk + 7 * 8, 7);
                 save(rblk + 7 * 8 + 4, seg_next_addr);
                 write_blk(rblk, seg_now_addr, &buf);
+                if (start_save_index)
+                    fprintf(fp, "%d\n", seg_now_addr);
                 seg_now_addr = seg_next_addr;
-                freeBlockInBuffer(rblk, &buf);
                 rblk = getNewBlockInBuffer(&buf);
             }
             save(rblk + loc * 8, value[0]);
@@ -400,18 +384,15 @@ void n_merge_sort(unsigned int start_addr, int offset)
         save(rblk + 7 * 8, 7);
         save(rblk + 7 * 8 + 4, 0);
         write_blk(rblk, seg_now_addr, &buf);
-        freeBlockInBuffer(rblk, &buf);
+        if (start_save_index) {
+            fprintf(fp, "%d\n", seg_now_addr);
+            fclose(fp);
+        }
         rblk = getNewBlockInBuffer(&buf);
         insert_tmp_from_back(&tmps, seg_start_addr);
-
         freeBuffer(&buf);
-        if (check_tmp(&tmps) == 0) {
-            read_data(seg_start_addr);
-
-            printf("-----------\n");
-            return;
-        }
-        // read_data(seg_start_addr);
+        if (tmps.times == 1)
+            break;
     }
-    read_data(seg_start_addr);
+    return seg_start_addr;
 }

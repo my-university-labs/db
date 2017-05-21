@@ -13,6 +13,11 @@ int read_data(int addr);
 
 int liner_search(char* rel, char* col, int op, int value);
 
+int binary_search(char* rel, char* col, int op, int value);
+
+int read_a_data(int addr);
+
+int project(char* rel, char* col);
 
 int combine(int addr1, int addr2);
 

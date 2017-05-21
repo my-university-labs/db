@@ -110,8 +110,8 @@ unsigned char* readBlockFromDisk(unsigned int addr, Buffer* buf)
     *blkPtr = BLOCK_UNAVAILABLE;
     blkPtr++;
     bytePtr = blkPtr;
-
-    while ((ch = fgetc(fp)) != EOF && bytePtr < blkPtr + buf->blkSize) {
+    while (bytePtr < blkPtr + buf->blkSize) {
+        ch = fgetc(fp);
         *bytePtr = ch;
         bytePtr++;
     }
@@ -124,6 +124,7 @@ unsigned char* readBlockFromDisk(unsigned int addr, Buffer* buf)
 
 int writeBlockToDisk(unsigned char* blkPtr, unsigned int addr, Buffer* buf)
 {
+
     char filename[40];
     unsigned char* bytePtr;
 
@@ -134,9 +135,9 @@ int writeBlockToDisk(unsigned char* blkPtr, unsigned int addr, Buffer* buf)
         perror("Writing Block Failed!\n");
         return -1;
     }
-
-    for (bytePtr = blkPtr; bytePtr < blkPtr + buf->blkSize; bytePtr++)
+    for (bytePtr = blkPtr; bytePtr < (blkPtr + buf->blkSize); bytePtr++) {
         fputc((int)(*bytePtr), fp);
+    }
 
     fclose(fp);
     *(blkPtr - 1) = BLOCK_AVAILABLE;
