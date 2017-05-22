@@ -58,10 +58,16 @@ int get_next_addr()
     mark[num] = 1;
     return num;
 }
-
+static int lala = 1;
+static int hoho = 0;
 /* create data for tuple */
 int get_a_data(int begin, int end)
 {
+    if (hoho++ % 2 == 0)
+        ++lala;
+    if (lala > 40)
+        lala = 0;
+    return 20 + (lala);
     int n = rand() % (end + 1 - begin) + begin;
     if (n % 15 == 0 && end <= 40)
         return 40;
@@ -259,12 +265,23 @@ void blks_sort(unsigned int start_addr, int offset, TmpSegments* tmps)
 
 static void adjust(int i, LoserTree* tree)
 {
+    int index, flag = 0;
+    unsigned char *a, *b;
     int parent = (i + MERGE_N - 1) / 2;
     while (parent > 0) {
-        if (tree->leaves[i] > tree->leaves[tree->loserTree[parent]]) {
+        index = tree->loserTree[parent];
+        if (index != 0 && i != 0) {
+            a = tree->blk[i] + 8 * tree->offset[i];
+            b = tree->blk[index] + 8 * tree->offset[index];
+            int m = convert(a + 4);
+            int n = convert(b + 4);
+            flag = m > n;
+        } else {
+            flag = 0;
+        }
+        if (tree->leaves[i] > tree->leaves[index] || (tree->leaves[i] == tree->leaves[index] && flag)) {
             int temp = tree->loserTree[parent];
             tree->loserTree[parent] = i;
-            /* i指向的是优胜者 */
             i = temp;
         }
         parent = parent / 2;
@@ -395,4 +412,42 @@ int n_merge_sort(unsigned int start_addr, int offset)
             break;
     }
     return seg_start_addr;
+}
+int save_info(Buffer* buf, unsigned char** des, unsigned char* from, int* index, int times, int* save_to, int end)
+{
+    int next;
+    if (!end) {
+        if (*index >= 7) {
+            *index = 0;
+            save(*des + 8 * 7, 7);
+            next = get_next_addr();
+            save(*des + 7 * 8 + 4, next);
+            write_blk(*des, *save_to, buf);
+            *save_to = next;
+            *des = getNewBlockInBuffer(buf);
+        }
+        memcpy(*des + *index * 8, from, 8);
+        ++(*index);
+    } else {
+        save(*des + 7 * 8, times);
+        save(*des + 7 * 8 + 4, 0);
+        write_blk(*des, *save_to, buf);
+    }
+    return 0;
+}
+int cmp_tuple(unsigned char* a, unsigned char* b, int offset)
+{
+    int v11, v12;
+    int v21, v22;
+    memcpy(&v11, a + offset * 4, sizeof(int));
+    memcpy(&v12, a + (1 - offset) * 4, sizeof(int));
+    memcpy(&v21, b + offset * 4, sizeof(int));
+    memcpy(&v22, b + (1 - offset) * 4, sizeof(int));
+    if (v11 == v21 && v12 == v22) {
+        return 0;
+    } else if (v11 < v21 || (v11 == v21 && v12 < v22)) {
+        return -1;
+    } else {
+        return 1;
+    }
 }

@@ -17,14 +17,13 @@
 #define MAX 100000
 
 #define TMP_SIZE 1000
+
 #define TMPBASE 500000
 
 #include "extmem.h"
 
 #define TRUE 1
 #define FALSE 0
-
-
 
 struct segment {
     int times;
@@ -75,4 +74,9 @@ int n_merge_sort(unsigned int start_addr, int offset);
 
 void loser_tree();
 void test_loser_tree(int start);
+
+int save_info(Buffer* buf, unsigned char** des, unsigned char* from, int* index, int times, int* save_to, int end);
+
+int cmp_tuple(unsigned char* a, unsigned char* b, int offset);
+
 #endif

@@ -278,12 +278,12 @@ int project(char* rel, char* col)
     get_start_addr_from_file(rel, col, addr_saver);
     int addr = addr_saver[0], offset = addr_saver[1];
 
-    int times, timer = 0, data;
-    int start_addr, now_addr, next_addr, tmp_addr;
+    int times, index_saver = 0, data;
+    int start_addr, save_to, tmp_addr;
     start_addr = get_next_addr() + TMPBASE + MAX;
-    now_addr = start_addr;
+    save_to = start_addr;
 
-    unsigned char *blk, *blk_save = getNewBlockInBuffer(&buf);
+    unsigned char *blk, *blk_saver = getNewBlockInBuffer(&buf);
     while (addr) {
         read_blk(addr, &buf, &blk);
         times = convert(blk + 8 * 7);
@@ -292,49 +292,77 @@ int project(char* rel, char* col)
             data = convert(blk + 8 * i + offset * 4);
             if (!mark[data]) {
                 mark[data] = 1;
-                if (timer >= 7) {
-                    timer = 0;
-                    save(blk_save + 8 * 7, 7);
-                    next_addr = get_next_addr() + TMPBASE + MAX;
-                    save(blk_save + 7 * 8 + 4, next_addr);
-                    write_blk(blk_save, now_addr, &buf);
-                    now_addr = next_addr;
-                    blk_save = getNewBlockInBuffer(&buf);
-                }
-                memcpy(blk_save + timer * 8, blk + 8 * i, 8);
-                ++timer;
+                save_info(&buf, &blk_saver, blk + i * 8, &index_saver, 0, &save_to, 0);
             }
         }
         freeBlockInBuffer(blk, &buf);
         addr = tmp_addr;
     }
-    save(blk_save + 8 * 7, timer);
-    save(blk_save + 7 * 8 + 4, 0);
-    write_blk(blk_save, now_addr, &buf);
+    save_info(&buf, &blk_saver, NULL, NULL, index_saver, &save_to, 1);
     return start_addr;
+}
+
+static int check_blk(Buffer* buf, unsigned char** blk, int* times, int* offset, int* next)
+{
+    if (*offset < *times) {
+        return 0;
+    }
+    if (*next == 0) {
+        return -1;
+    }
+    if (*blk != NULL) {
+        freeBlockInBuffer(*blk, buf);
+    }
+    read_blk(*next, buf, blk);
+    *times = convert(*blk + 7 * 8);
+    *next = convert(*blk + 7 * 8 + 4);
+    *offset = 0;
+    return 0;
 }
 
 int combine(int addr1, int addr2)
 {
     Buffer buf;
     init_buf(&buf);
-    unsigned char *blk_a, *blk_b, *blk_saver;
+    unsigned char *blk_a = NULL, *blk_b = NULL, *blk_saver = NULL;
     addr1 = n_merge_sort(addr1, 0);
     addr2 = n_merge_sort(addr2, 0);
-    read_data(addr1);
-    read_data(addr2);
+    int index_saver = 0;
+    blk_saver = getNewBlockInBuffer(&buf);
 
-    // blk_saver = getNewBlockInBuffer(&buf);
+    char last_insert[8];
+    int status1, status2, action, times1 = 0, times2 = 0, offset1 = 0, offset2 = 0;
 
-    // char last_insert[8];
-    // int times1, times2, offset1 = 0, offset2 = 0;
+    int start_addr = TMPBASE + get_next_addr() + MAX;
+    int save_to = start_addr;
 
-    // memset(last_insert, 1, 8);
-    // read_blk(addr1, &buf, &blk_a);
-    // read_blk(addr1, &buf, &blk_b);
-    // blk_saver = getNewBlockInBuffer(&buf);
-
-    // while (1) {
-    // }
-    return 0;
+    memset(last_insert, 1, 8);
+    blk_saver = getNewBlockInBuffer(&buf);
+    while (1) {
+        status1 = check_blk(&buf, &blk_a, &times1, &offset1, &addr1);
+        status2 = check_blk(&buf, &blk_b, &times2, &offset2, &addr2);
+        action = cmp_tuple(blk_a + offset1 * 8, blk_b + offset2 * 8, 0);
+        if (action == -1) {
+            // a < b, move a
+            if (status1 == -1)
+                break;
+            ++offset1;
+        } else if (action == 1) {
+            // a > b, move b
+            if (status2 == -1)
+                break;
+            ++offset2;
+        } else {
+            // a = b, check
+            if (memcmp(blk_a + offset1 * 8, last_insert, 8) != 0) {
+                // save it
+                save_info(&buf, &blk_saver, blk_a + offset1 * 8, &index_saver, 0, &save_to, 0);
+                memcpy(last_insert, blk_a + offset1 * 8, 8);
+            }
+            ++offset1;
+            ++offset2;
+        }
+    }
+    save_info(&buf, &blk_saver, NULL, NULL, index_saver, &save_to, 1);
+    return start_addr;
 }
