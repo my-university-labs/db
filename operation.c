@@ -427,17 +427,19 @@ int nested_loop_join(int addr1, int addr2, int which1, int which2)
 {
     Buffer buf;
     int index_saver = 0;
-    unsigned char *blk_a, *blk_b, *blk_saver;
+    unsigned char *blk_a, *blk_b, *blk_saver, tmp[8];
 
     int start_addr, save_to;
     int next1, next2, times1, times2, offset1, offset2;
 
     start_addr = TMPBASE + get_next_addr();
     save_to = start_addr;
-
     init_buf(&buf);
+
+    int sum = 0, tt = 0, v11, v21;
     blk_saver = getNewBlockInBuffer(&buf);
     for (next1 = addr1; next1 != 0;) {
+        printf("%d\n", next1);
         read_blk(next1, &buf, &blk_a);
         times1 = convert(blk_a + 8 * 7);
         next1 = convert(blk_a + 8 * 7 + 4);
@@ -447,11 +449,16 @@ int nested_loop_join(int addr1, int addr2, int which1, int which2)
             next2 = convert(blk_b + 8 * 7 + 4);
             for (offset1 = 0; offset1 < times1; ++offset1) {
                 for (offset2 = 0; offset2 < times2; ++offset2) {
-                    if (convert(blk_a + offset1 * 8 + which1 * 4) == convert(blk_b + offset2 * 8 + which2 * 4)) {
-                        save_blk(&buf, &blk_saver, blk_a + offset1 * 8, &index_saver, &save_to);
-                        memcpy(blk_b + offset2 * 8, blk_b + offset2 * 8 + 4, 4);
-                        memset(blk_b + offset2 * 8 + 4, 0, 4);
-                        save_blk(&buf, &blk_saver, blk_b + offset2 * 8, &index_saver, &save_to);
+                    ++tt;
+                    v11 = convert(blk_a + offset1 * 8);
+                    v21 = convert(blk_b + offset2 * 8);
+                    if (v11 == v21) {
+                        ++sum;
+                        memcpy(tmp, blk_a + offset1 * 8, 8);
+                        save_blk(&buf, &blk_saver, tmp, &index_saver, &save_to);
+                        memcpy(tmp, blk_b + offset2 * 8 + 4, 4);
+                        memset(tmp + 4, 0, 4);
+                        save_blk(&buf, &blk_saver, tmp, &index_saver, &save_to);
                     }
                 }
             }
@@ -460,6 +467,88 @@ int nested_loop_join(int addr1, int addr2, int which1, int which2)
         freeBlockInBuffer(blk_a, &buf);
     }
     save_last_blk(&buf, &blk_saver, index_saver, &save_to);
-    read_data(start_addr);
+    return start_addr;
+}
+int sort_merge_join(int addr1, int addr2, int which1, int which2)
+{
+    Buffer buf;
+    unsigned char *blk_a = NULL, *blk_b = NULL, *blk_saver = NULL;
+    int index_saver = 0;
+
+    int status1, status2, times1 = 0, times2 = 0, offset1 = 0, offset2 = 0;
+
+    int start_addr = TMPBASE + get_next_addr() + MAX;
+    int save_to = start_addr;
+
+    unsigned char tmp[8];
+    int i, j, v1, v2, target;
+    int tmp_nu1 = 0, tmp_nu2 = 0, tmp1[1000], tmp2[1000];
+
+    init_buf(&buf);
+    memset(tmp1, 0, sizeof(tmp1));
+    memset(tmp2, 0, sizeof(tmp1));
+    addr1 = n_merge_sort(addr1, 0);
+    addr2 = n_merge_sort(addr2, 0);
+    blk_saver = getNewBlockInBuffer(&buf);
+
+    while (addr1 != 0 && addr2 != 0) {
+        status1 = check_blk(&buf, &blk_a, &times1, &offset1, &addr1);
+        status2 = check_blk(&buf, &blk_b, &times2, &offset2, &addr2);
+        v1 = convert(blk_a + offset1 * 8 + which1 * 4);
+        v2 = convert(blk_b + offset2 * 8 + which2 * 4);
+
+        if (v1 == v2) {
+            target = v1;
+            while (target == v1 && status1 != -1) {
+                tmp1[tmp_nu1++] = convert(blk_a + offset1 * 8 + (1 - which1) * 4);
+                ++offset1;
+                status1 = check_blk(&buf, &blk_a, &times1, &offset1, &addr1);
+                v1 = convert(blk_a + offset1 * 8 + which1 * 4);
+            }
+            while (target == v2 && status2 != -1) {
+                tmp2[tmp_nu2++] = convert(blk_b + offset2 * 8 + (1 - which2) * 4);
+                ++offset2;
+                status2 = check_blk(&buf, &blk_b, &times2, &offset2, &addr2);
+                v2 = convert(blk_b + offset2 * 8 + which2 * 4);
+            }
+        } else {
+            if (v1 < v2) { // discard v1
+                ++offset1;
+            } else { // discard v2
+                ++offset2;
+            }
+        }
+        if (tmp_nu1 > 0 && tmp_nu2 > 0) {
+            // insert
+            for (i = 0; i < tmp_nu1; ++i) {
+                for (j = 0; j < tmp_nu2; ++j) {
+                    memcpy(tmp, &target, 4);
+                    memcpy(tmp + 4, &tmp1[i], 4);
+                    save_blk(&buf, &blk_saver, tmp, &index_saver, &save_to);
+                    memcpy(tmp, &tmp2[j], 4);
+                    memset(tmp + 4, 0, 4);
+                    save_blk(&buf, &blk_saver, tmp, &index_saver, &save_to);
+                }
+            }
+            memset(tmp1, 0, sizeof(tmp1));
+            memset(tmp2, 0, sizeof(tmp1));
+            tmp_nu1 = 0;
+            tmp_nu2 = 0;
+        }
+    }
+    if (tmp_nu1 > 0 && tmp_nu2 > 0) {
+        // insert
+        for (i = 0; i < tmp_nu1; ++i) {
+            for (j = 0; j < tmp_nu2; ++j) {
+                memcpy(tmp, &target, 4);
+                memcpy(tmp + 4, &tmp1[i], 4);
+                save_blk(&buf, &blk_saver, tmp, &index_saver, &save_to);
+                memcpy(tmp, &tmp2[j], 4);
+                memset(tmp + 4, 0, 4);
+                save_blk(&buf, &blk_saver, tmp, &index_saver, &save_to);
+            }
+        }
+    }
+    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
     return start_addr;
 }

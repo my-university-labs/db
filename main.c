@@ -76,6 +76,15 @@ void nest_connection()
     get_start_addr_from_file(rrel, rcol1, r1);
     get_start_addr_from_file(srel, scol1, r2);
     int addr = nested_loop_join(r1[0], r2[0], 0, 0);
+    read_data(addr);
+}
+void merge_connection()
+{
+    int r1[2], r2[2];
+    get_start_addr_from_file(rrel, rcol1, r1);
+    get_start_addr_from_file(srel, scol1, r2);
+    int addr = sort_merge_join(r1[0], r2[0], 0, 0);
+    read_data(addr);
 }
 void print_menu()
 {
@@ -145,6 +154,9 @@ int main(int argc, char** argv)
             break;
         case 9:
             nest_connection();
+            break;
+        case 10:
+            merge_connection();
             break;
         case 0:
             finished
