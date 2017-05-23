@@ -158,6 +158,11 @@ int main(int argc, char** argv)
         case 10:
             merge_connection();
             break;
+        case 12:
+            search_hash_index(srel, 40);
+            // drop_hash_index();
+            // create_hash_index(700001, 0, 0);
+            break;
         case 0:
             finished
                 = 1;

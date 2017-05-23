@@ -9,13 +9,9 @@ void init();
 /* create data */
 int create_data(char* rel, char* col1, int begin1, int end1, char* col2, int begin2, int end2, int times);
 
-int read_data(int addr);
-
 int liner_search(char* rel, char* col, int op, int value);
 
 int binary_search(char* rel, char* col, int op, int value);
-
-int read_a_data(int addr);
 
 int project(char* rel, char* col);
 
@@ -30,5 +26,7 @@ int nested_loop_join(int addr1, int addr2, int which1, int which2);
 int sort_merge_join(int addr1, int addr2, int which1, int which2);
 
 int hash_join(int addr1, int addr2);
+
+int search_hash_index(char* rel, int key);
 
 #endif

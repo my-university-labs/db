@@ -49,20 +49,21 @@ void read_blk(unsigned int addr, Buffer* buf, unsigned char** blk)
     }
 }
 /* create an addr to save blk */
-int get_next_addr()
+int get_next_addr(int base)
 {
     int num;
     do {
         num = rand() % (MAX);
     } while (mark[num]);
     mark[num] = 1;
-    return num;
+    return num + base;
 }
 // static int lala = 1;
 // static int hoho = 0;
 /* create data for tuple */
 int get_a_data(int begin, int end)
 {
+    return 40;
     // if (hoho++ % 2 == 0)
     //     ++lala;
     // if (lala > 40)
@@ -255,7 +256,7 @@ void blks_sort(unsigned int start_addr, int offset, TmpSegments* tmps)
         save(blk + 8 * 7, times);
         save(blk + 8 * 7 + 4, 0);
         /* save as a tmp */
-        save_addr = get_next_addr() + TMPBASE;
+        save_addr = get_next_addr(MERGE_BASE);
         write_blk(blk, save_addr, &buf);
         insert_tmp(tmps, save_addr);
         /* get next */
@@ -367,7 +368,7 @@ int n_merge_sort(unsigned int start_addr, int offset)
         in = 0;
         loc = 0;
 
-        seg_start_addr = get_next_addr() + TMPBASE;
+        seg_start_addr = get_next_addr(MERGE_BASE);
         seg_now_addr = seg_start_addr;
         init_buf(&buf);
         rblk = getNewBlockInBuffer(&buf);
@@ -384,7 +385,7 @@ int n_merge_sort(unsigned int start_addr, int offset)
             in = 1;
             if (loc >= 7) {
                 loc = 0;
-                seg_next_addr = get_next_addr() + TMPBASE;
+                seg_next_addr = get_next_addr(MERGE_BASE);
                 save(rblk + 7 * 8, 7);
                 save(rblk + 7 * 8 + 4, seg_next_addr);
                 write_blk(rblk, seg_now_addr, &buf);
@@ -419,7 +420,7 @@ void save_blk(Buffer* buf, unsigned char** des, unsigned char* from, int* index,
     if (*index >= 7) {
         *index = 0;
         save(*des + 8 * 7, 7);
-        next = get_next_addr();
+        next = get_next_addr(ANY_BASE);
         save(*des + 7 * 8 + 4, next);
         write_blk(*des, *save_to, buf);
         *save_to = next;
@@ -457,4 +458,175 @@ void try_to_save_for_set(Buffer* buf, unsigned char** blk_saver, unsigned char* 
         save_blk(buf, blk_saver, blk + offset * 8, index_saver, save_to);
         memcpy(last_insert, blk + offset * 8, 8);
     }
+}
+
+int hash_function(int value)
+{
+    return value;
+}
+
+int read_data(int addr)
+{
+    int i, j = 0;
+    int num, times;
+    Buffer buf;
+    unsigned char* blk = NULL;
+    /* init buffer */
+    init_buf(&buf);
+    while (addr) {
+        read_blk(addr, &buf, &blk);
+        times = convert(blk + 8 * 7);
+        printf("Read data from blk %d\n", addr);
+        printf("%d the number of tuple is %d\n", ++j, times);
+
+        for (i = 0; i < times; ++i) {
+            num = convert(blk + 8 * i);
+            printf("%d: %10d, ", i, num);
+
+            num = convert(blk + 8 * i + 4);
+            printf("%10d\n", num);
+        }
+
+        addr = convert(blk + 8 * 7 + 4);
+        printf("next addr of blk is %d\n", addr);
+        freeBlockInBuffer(blk, &buf);
+    }
+    printf("Read End!\n");
+    freeBuffer(&buf);
+    return 0;
+}
+int read_a_data(int addr)
+{
+    int i;
+    int num, times;
+    Buffer buf;
+    unsigned char* blk = NULL;
+    /* init buffer */
+    init_buf(&buf);
+    printf("Read data from blk %d\n", addr);
+    read_blk(addr, &buf, &blk);
+    times = convert(blk + 8 * 7);
+    printf("the number of tuple is %d\n", times);
+
+    for (i = 0; i < times; ++i) {
+        num = convert(blk + 8 * i);
+        printf("%d: %10d, ", i, num);
+
+        num = convert(blk + 8 * i + 4);
+        printf("%10d\n", num);
+    }
+
+    addr = convert(blk + 8 * 7 + 4);
+    printf("next addr of blk is %d\n", addr);
+    freeBlockInBuffer(blk, &buf);
+    printf("Read End!\n");
+    freeBuffer(&buf);
+    return 0;
+}
+
+static char hash_index_marker[MAX];
+
+void init_hash_index()
+{
+    int i;
+    for (i = 0; i < 100; ++i) {
+        hash_index_marker[i] = TRUE;
+    }
+    for (i = 100; i < MAX; ++i) {
+        hash_index_marker[i] = FALSE;
+    }
+}
+static int get_new_blk_for_index()
+{
+    int i;
+    for (i = 100; i < MAX; ++i) {
+        if (hash_index_marker[i] == FALSE) {
+            hash_index_marker[i] = TRUE;
+            return i;
+        }
+    }
+    return -1;
+}
+void drop_hash_index()
+{
+    int i;
+    char filename[128];
+    for (i = 0; i < 100; ++i) {
+        sprintf(filename, "blk/%d.blk", INDEX_BASE_R + i);
+        if (remove(filename) == 0) {
+            printf("Remove Index file %s\n", filename);
+        }
+    }
+    for (i = 0; i < 100; ++i) {
+        sprintf(filename, "blk/%d.blk", INDEX_BASE_S + i);
+        if (remove(filename) == 0) {
+            printf("Remove Index file %s\n", filename);
+        }
+    }
+}
+
+int hash_index_base(char* rel)
+{
+    return (strcmp(rel, "R") == 0 ? INDEX_BASE_R : INDEX_BASE_S);
+}
+int create_hash_index(int addr, int offset, int key, char* rel)
+{
+    FILE* fp_try;
+    char filename[128];
+
+    Buffer buf;
+    unsigned char* blk;
+    int have = 0, times, now, next;
+
+    now = hash_index_base(rel) + hash_function(key);
+
+    sprintf(filename, "blk/%d.blk", now);
+    if (!(fp_try = fopen(filename, "r"))) {
+        have = 0;
+    } else {
+        have = 1;
+        fclose(fp_try);
+    }
+
+    init_buf(&buf);
+
+    if (have) {
+        read_blk(now, &buf, &blk);
+        times = convert(blk + 7 * 8);
+        next = convert(blk + 7 * 8 + 4);
+    } else {
+        blk = getNewBlockInBuffer(&buf);
+        times = 0;
+        next = 0;
+    }
+    while (1) {
+        if (times < 7) {
+            save(blk + times * 8, addr);
+            save(blk + times * 8 + 4, offset);
+            ++times;
+            save(blk + 7 * 8, times);
+            save(blk + 7 * 8 + 4, 0);
+            write_blk(blk, now, &buf);
+            break;
+        } else {
+            if (next == 0) {
+                next = hash_index_base(rel) + get_new_blk_for_index();
+                save(blk + 7 * 8 + 4, next);
+                write_blk(blk, now, &buf);
+                blk = getNewBlockInBuffer(&buf);
+
+                times = 0;
+                now = next;
+                next = 0;
+            } else {
+                freeBlockInBuffer(blk, &buf);
+                read_blk(now, &buf, &blk);
+                now = next;
+                times = convert(blk + 7 * 8);
+                next = convert(blk + 7 * 8 + 4);
+            }
+        }
+    }
+    freeBuffer(&buf);
+    return 0;
 }

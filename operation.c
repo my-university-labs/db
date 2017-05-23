@@ -14,11 +14,11 @@ void init()
     clear_mark();
 }
 
-static int do_create_data(int start_addr, int begin1, int end1, int begin2, int end2, int flag)
+static int do_create_data(int start_addr, int begin1, int end1, int begin2, int end2, int flag, char* rel)
 {
     int j, k, sum = 0;
     Buffer buf;
-    int now_addr, next_addr;
+    int now_addr, next_addr, v1, v2;
     now_addr = start_addr;
     unsigned char* blk;
     /* init buffer */
@@ -29,12 +29,15 @@ static int do_create_data(int start_addr, int begin1, int end1, int begin2, int 
 
         /* create date for block */
         for (k = 0; k < 7; ++k) {
-            save(blk + k * 8, get_a_data(begin1, end1));
-            save(blk + k * 8 + 4, get_a_data(begin2, end2));
+            v1 = get_a_data(begin1, end1);
+            v2 = get_a_data(begin2, end2);
+            save(blk + k * 8, v1);
+            save(blk + k * 8 + 4, v2);
+            create_hash_index(now_addr, k, v1, rel);
         }
 
         /* save addr into the last tuple */
-        next_addr = get_next_addr();
+        next_addr = get_next_addr(VALUE_BASE);
         save(blk + 7 * 8, 7);
         if (j == 7 && flag == 0)
             save(blk + 7 * 8 + 4, 0);
@@ -53,73 +56,17 @@ int create_data(char* rel, char* col1, int begin1, int end1, char* col2, int beg
 {
     int i;
     int sum = 0;
-    int start_addr = get_next_addr();
+    int start_addr = get_next_addr(VALUE_BASE);
     int next_addr = start_addr;
+
+    init_hash_index();
     save_start_addr_into_file(rel, col1, col2, start_addr);
     for (i = 0; i < times; ++i) {
-        next_addr = do_create_data(next_addr, begin1, end1, begin2, end2, times - i - 1);
+        next_addr = do_create_data(next_addr, begin1, end1, begin2, end2, times - i - 1, rel);
     }
     return start_addr;
 }
 
-int read_data(int addr)
-{
-    int i, j = 0;
-    int num, times;
-    Buffer buf;
-    unsigned char* blk = NULL;
-    /* init buffer */
-    init_buf(&buf);
-    while (addr) {
-        read_blk(addr, &buf, &blk);
-        times = convert(blk + 8 * 7);
-        printf("Read data from blk %d\n", addr);
-        printf("%d the number of tuple is %d\n", ++j, times);
-
-        for (i = 0; i < times; ++i) {
-            num = convert(blk + 8 * i);
-            printf("%d: %10d, ", i, num);
-
-            num = convert(blk + 8 * i + 4);
-            printf("%10d\n", num);
-        }
-
-        addr = convert(blk + 8 * 7 + 4);
-        printf("next addr of blk is %d\n", addr);
-        freeBlockInBuffer(blk, &buf);
-    }
-    printf("Read End!\n");
-    freeBuffer(&buf);
-    return 0;
-}
-int read_a_data(int addr)
-{
-    int i;
-    int num, times;
-    Buffer buf;
-    unsigned char* blk = NULL;
-    /* init buffer */
-    init_buf(&buf);
-    printf("Read data from blk %d\n", addr);
-    read_blk(addr, &buf, &blk);
-    times = convert(blk + 8 * 7);
-    printf("the number of tuple is %d\n", times);
-
-    for (i = 0; i < times; ++i) {
-        num = convert(blk + 8 * i);
-        printf("%d: %10d, ", i, num);
-
-        num = convert(blk + 8 * i + 4);
-        printf("%10d\n", num);
-    }
-
-    addr = convert(blk + 8 * 7 + 4);
-    printf("next addr of blk is %d\n", addr);
-    freeBlockInBuffer(blk, &buf);
-    printf("Read End!\n");
-    freeBuffer(&buf);
-    return 0;
-}
 int liner_search(char* rel, char* col, int op, int value)
 {
     int i;
@@ -128,7 +75,7 @@ int liner_search(char* rel, char* col, int op, int value)
     int addr[2], offset, times, data, index_saver = 0;
     /* when find -> save it into there */
     int next_addr, start_addr, save_to;
-    start_addr = get_next_addr() + MAX;
+    start_addr = get_next_addr(SEARCH_BASE);
     save_to = start_addr;
     /* get start addr of relation */
     get_start_addr_from_file(rel, col, addr);
@@ -175,7 +122,7 @@ static int save_data_for_b_search(Buffer* buf, int addr, int op, int value)
 {
     int times, index_saver = 0, data, in = 0, end = 0;
     int start_addr, save_to, tmp_addr;
-    start_addr = get_next_addr() + TMPBASE + MAX;
+    start_addr = get_next_addr(SEARCH_BASE);
     save_to = start_addr;
 
     unsigned char *blk, *blk_saver = getNewBlockInBuffer(buf);
@@ -250,7 +197,7 @@ int project(char* rel, char* col)
 
     int times, index_saver = 0, data;
     int start_addr, save_to, tmp_addr;
-    start_addr = get_next_addr() + TMPBASE + MAX;
+    start_addr = get_next_addr(TMP_BASE);
     save_to = start_addr;
 
     unsigned char *blk, *blk_saver = getNewBlockInBuffer(&buf);
@@ -303,7 +250,7 @@ int intersect(int addr1, int addr2)
     unsigned char last_insert[8];
     int status1, status2, action, times1 = 0, times2 = 0, offset1 = 0, offset2 = 0;
 
-    int start_addr = TMPBASE + get_next_addr() + MAX;
+    int start_addr = get_next_addr(TMP_BASE);
     int save_to = start_addr;
 
     memset(last_insert, 1, 8);
@@ -348,7 +295,7 @@ int join(int addr1, int addr2)
     unsigned char last_insert[8];
     int status1, status2, action, times1 = 0, times2 = 0, offset1 = 0, offset2 = 0;
 
-    int start_addr = TMPBASE + get_next_addr() + MAX;
+    int start_addr = get_next_addr(TMP_BASE);
     int save_to = start_addr;
 
     memset(last_insert, 1, 8);
@@ -395,7 +342,7 @@ int except(int addr1, int addr2)
     unsigned char last_insert[8];
     int status1, status2, action, times1 = 0, times2 = 0, offset1 = 0, offset2 = 0;
 
-    int start_addr = TMPBASE + get_next_addr() + MAX;
+    int start_addr = get_next_addr(TMP_BASE);
     int save_to = start_addr;
 
     memset(last_insert, 1, 8);
@@ -427,16 +374,14 @@ int nested_loop_join(int addr1, int addr2, int which1, int which2)
 {
     Buffer buf;
     int index_saver = 0;
-    unsigned char *blk_a, *blk_b, *blk_saver, tmp[8];
-
     int start_addr, save_to;
-    int next1, next2, times1, times2, offset1, offset2;
+    unsigned char *blk_a, *blk_b, *blk_saver, tmp[8];
+    int next1, next2, times1, times2, offset1, offset2, v11, v21;
 
-    start_addr = TMPBASE + get_next_addr();
-    save_to = start_addr;
     init_buf(&buf);
+    start_addr = get_next_addr(JOIN_BASE);
+    save_to = start_addr;
 
-    int sum = 0, tt = 0, v11, v21;
     blk_saver = getNewBlockInBuffer(&buf);
     for (next1 = addr1; next1 != 0;) {
         printf("%d\n", next1);
@@ -449,11 +394,9 @@ int nested_loop_join(int addr1, int addr2, int which1, int which2)
             next2 = convert(blk_b + 8 * 7 + 4);
             for (offset1 = 0; offset1 < times1; ++offset1) {
                 for (offset2 = 0; offset2 < times2; ++offset2) {
-                    ++tt;
                     v11 = convert(blk_a + offset1 * 8);
                     v21 = convert(blk_b + offset2 * 8);
                     if (v11 == v21) {
-                        ++sum;
                         memcpy(tmp, blk_a + offset1 * 8, 8);
                         save_blk(&buf, &blk_saver, tmp, &index_saver, &save_to);
                         memcpy(tmp, blk_b + offset2 * 8 + 4, 4);
@@ -477,7 +420,7 @@ int sort_merge_join(int addr1, int addr2, int which1, int which2)
 
     int status1, status2, times1 = 0, times2 = 0, offset1 = 0, offset2 = 0;
 
-    int start_addr = TMPBASE + get_next_addr() + MAX;
+    int start_addr = get_next_addr(JOIN_BASE);
     int save_to = start_addr;
 
     unsigned char tmp[8];
@@ -551,4 +494,31 @@ int sort_merge_join(int addr1, int addr2, int which1, int which2)
     }
     save_last_blk(&buf, &blk_saver, index_saver, &save_to);
     return start_addr;
+}
+int search_hash_index(char* rel, int key)
+{
+    Buffer buf;
+    unsigned char *blk, *blk_reader;
+    int i, bucket, hash_loc, addr, times, where, which, timer = 0;
+
+    init_buf(&buf);
+    bucket = hash_function(key);
+    hash_loc = hash_index_base(rel) + bucket;
+    addr = hash_loc;
+    printf("Tuple in Bucket %d, Location is %d\n", bucket, hash_loc);
+    while (addr != 0) {
+        read_blk(addr, &buf, &blk);
+        times = convert(blk + 7 * 8);
+        addr = convert(blk + 7 * 8 + 4);
+        for (i = 0; i < times; ++i) {
+            where = convert(blk + i * 8);
+            which = convert(blk + i * 8 + 4);
+            read_blk(where, &buf, &blk_reader);
+            printf("%3d Find it: %d %d\t\t(location: %7d, offset %2d)\n",
+                ++timer, convert(blk_reader + which * 8), convert(blk_reader + which * 8 + 4), where, which);
+            freeBlockInBuffer(blk_reader, &buf);
+        }
+        freeBlockInBuffer(blk, &buf);
+    }
+    return 0;
 }

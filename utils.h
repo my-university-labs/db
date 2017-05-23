@@ -20,12 +20,21 @@
 
 #define TMP_SIZE 1000
 
-#define TMPBASE 500000
+#define TMPBASE 400000
 
 #include "extmem.h"
 
 #define TRUE 1
 #define FALSE 0
+
+#define VALUE_BASE 0
+#define SEARCH_BASE 100000
+#define MERGE_BASE 200000
+#define JOIN_BASE 300000
+#define TMP_BASE 400000
+#define ANY_BASE 500000
+#define INDEX_BASE_R 600000
+#define INDEX_BASE_S 700000
 
 struct segment {
     int times;
@@ -56,7 +65,7 @@ void write_blk(unsigned char* blk, unsigned int addr, Buffer* buf);
 
 void read_blk(unsigned int addr, Buffer* buf, unsigned char** blk);
 
-int get_next_addr();
+int get_next_addr(int base);
 
 int get_a_data(int begin, int end);
 
@@ -85,4 +94,17 @@ int cmp_tuple(unsigned char* a, unsigned char* b, int offset);
 
 void try_to_save_for_set(Buffer* buf, unsigned char** blk_saver, unsigned char* blk, int offset, int* index_saver, int* save_to, unsigned char last_insert[8]);
 
+int hash_function(int value);
+
+int read_a_data(int addr);
+
+int read_data(int addr);
+
+int hash_index_base(char* rel);
+
+void init_hash_index();
+
+void drop_hash_index();
+
+int create_hash_index(int addr, int offset, int key, char* rel);
 #endif
