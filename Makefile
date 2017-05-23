@@ -1,4 +1,7 @@
-all:main
+all:prepare main
+prepare:
+	-mkdir -p build
+	-mkdir -p blk
 
 main:build/extmem.o build/main.o build/operation.o build/utils.o
 	gcc -o main build/main.o build/extmem.o build/operation.o build/utils.o

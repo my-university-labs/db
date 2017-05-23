@@ -25,7 +25,7 @@ int intersect(int addr1, int addr2);
 
 int except(int addr1, int addr2);
 
-int nest_loop_join(int addr1, int addr2);
+int nested_loop_join(int addr1, int addr2, int which1, int which2);
 
 int sort_merge_join(int addr1, int addr2);
 

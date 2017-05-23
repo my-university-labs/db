@@ -423,3 +423,43 @@ int except(int addr1, int addr2)
     save_last_blk(&buf, &blk_saver, index_saver, &save_to);
     return start_addr;
 }
+int nested_loop_join(int addr1, int addr2, int which1, int which2)
+{
+    Buffer buf;
+    int index_saver = 0;
+    unsigned char *blk_a, *blk_b, *blk_saver;
+
+    int start_addr, save_to;
+    int next1, next2, times1, times2, offset1, offset2;
+
+    start_addr = TMPBASE + get_next_addr();
+    save_to = start_addr;
+
+    init_buf(&buf);
+    blk_saver = getNewBlockInBuffer(&buf);
+    for (next1 = addr1; next1 != 0;) {
+        read_blk(next1, &buf, &blk_a);
+        times1 = convert(blk_a + 8 * 7);
+        next1 = convert(blk_a + 8 * 7 + 4);
+        for (next2 = addr2; next2 != 0;) {
+            read_blk(next2, &buf, &blk_b);
+            times2 = convert(blk_b + 8 * 7);
+            next2 = convert(blk_b + 8 * 7 + 4);
+            for (offset1 = 0; offset1 < times1; ++offset1) {
+                for (offset2 = 0; offset2 < times2; ++offset2) {
+                    if (convert(blk_a + offset1 * 8 + which1 * 4) == convert(blk_b + offset2 * 8 + which2 * 4)) {
+                        save_blk(&buf, &blk_saver, blk_a + offset1 * 8, &index_saver, &save_to);
+                        memcpy(blk_b + offset2 * 8, blk_b + offset2 * 8 + 4, 4);
+                        memset(blk_b + offset2 * 8 + 4, 0, 4);
+                        save_blk(&buf, &blk_saver, blk_b + offset2 * 8, &index_saver, &save_to);
+                    }
+                }
+            }
+            freeBlockInBuffer(blk_b, &buf);
+        }
+        freeBlockInBuffer(blk_a, &buf);
+    }
+    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
+    read_data(start_addr);
+    return start_addr;
+}

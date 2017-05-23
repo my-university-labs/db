@@ -70,6 +70,13 @@ void except_action()
     int addr = except(r1[0], r2[0]);
     read_data(addr);
 }
+void nest_connection()
+{
+    int r1[2], r2[2];
+    get_start_addr_from_file(rrel, rcol1, r1);
+    get_start_addr_from_file(srel, scol1, r2);
+    int addr = nested_loop_join(r1[0], r2[0], 0, 0);
+}
 void print_menu()
 {
     printf("|------------------------ Menu ------------------------|\n");
@@ -85,7 +92,7 @@ void print_menu()
     printf("|  7. Intersect                                        |\n");
     printf("|  8. Except                                           |\n");
     printf("|                 ---- Connection ----                 |\n");
-    printf("|  9. Nest Loop Join                                   |\n");
+    printf("|  9. Nested Loop Join                                   |\n");
     printf("| 10. Sort Merge Join                                  |\n");
     printf("| 11. Hash Join                                        |\n");
     printf("|                    ---- Index ----                   |\n");
@@ -135,6 +142,9 @@ int main(int argc, char** argv)
             break;
         case 8:
             except_action();
+            break;
+        case 9:
+            nest_connection();
             break;
         case 0:
             finished
