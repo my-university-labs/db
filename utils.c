@@ -58,16 +58,16 @@ int get_next_addr()
     mark[num] = 1;
     return num;
 }
-static int lala = 1;
-static int hoho = 0;
+// static int lala = 1;
+// static int hoho = 0;
 /* create data for tuple */
 int get_a_data(int begin, int end)
 {
-    if (hoho++ % 2 == 0)
-        ++lala;
-    if (lala > 40)
-        lala = 0;
-    return 20 + (lala);
+    // if (hoho++ % 2 == 0)
+    //     ++lala;
+    // if (lala > 40)
+    //     lala = 0;
+    // return 20 + (lala);
     int n = rand() % (end + 1 - begin) + begin;
     if (n % 15 == 0 && end <= 40)
         return 40;
@@ -413,27 +413,27 @@ int n_merge_sort(unsigned int start_addr, int offset)
     }
     return seg_start_addr;
 }
-int save_info(Buffer* buf, unsigned char** des, unsigned char* from, int* index, int times, int* save_to, int end)
+void save_blk(Buffer* buf, unsigned char** des, unsigned char* from, int* index, int* save_to)
 {
     int next;
-    if (!end) {
-        if (*index >= 7) {
-            *index = 0;
-            save(*des + 8 * 7, 7);
-            next = get_next_addr();
-            save(*des + 7 * 8 + 4, next);
-            write_blk(*des, *save_to, buf);
-            *save_to = next;
-            *des = getNewBlockInBuffer(buf);
-        }
-        memcpy(*des + *index * 8, from, 8);
-        ++(*index);
-    } else {
-        save(*des + 7 * 8, times);
-        save(*des + 7 * 8 + 4, 0);
+    if (*index >= 7) {
+        *index = 0;
+        save(*des + 8 * 7, 7);
+        next = get_next_addr();
+        save(*des + 7 * 8 + 4, next);
         write_blk(*des, *save_to, buf);
+        *save_to = next;
+        *des = getNewBlockInBuffer(buf);
     }
-    return 0;
+    memcpy(*des + *index * 8, from, 8);
+    ++(*index);
+}
+void save_last_blk(Buffer* buf, unsigned char** from, int times, int* save_to)
+{
+
+    save(*from + 7 * 8, times);
+    save(*from + 7 * 8 + 4, 0);
+    write_blk(*from, *save_to, buf);
 }
 int cmp_tuple(unsigned char* a, unsigned char* b, int offset)
 {
@@ -449,5 +449,12 @@ int cmp_tuple(unsigned char* a, unsigned char* b, int offset)
         return -1;
     } else {
         return 1;
+    }
+}
+void try_to_save_for_set(Buffer* buf, unsigned char** blk_saver, unsigned char* blk, int offset, int* index_saver, int* save_to, unsigned char last_insert[8])
+{
+    if (memcmp(blk + offset * 8, last_insert, 8) != 0) {
+        save_blk(buf, blk_saver, blk + offset * 8, index_saver, save_to);
+        memcpy(last_insert, blk + offset * 8, 8);
     }
 }

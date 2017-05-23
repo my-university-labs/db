@@ -1,3 +1,5 @@
+/* author: dongchangzhang */
+/* time: Sat 20 May 2017 02:58:46 PM CST */
 #ifndef UTILS_H
 #define UTILS_H
 
@@ -75,8 +77,12 @@ int n_merge_sort(unsigned int start_addr, int offset);
 void loser_tree();
 void test_loser_tree(int start);
 
-int save_info(Buffer* buf, unsigned char** des, unsigned char* from, int* index, int times, int* save_to, int end);
+void save_blk(Buffer* buf, unsigned char** des, unsigned char* from, int* index, int* save_to);
+
+void save_last_blk(Buffer* buf, unsigned char** from, int times, int* save_to);
 
 int cmp_tuple(unsigned char* a, unsigned char* b, int offset);
+
+void try_to_save_for_set(Buffer* buf, unsigned char** blk_saver, unsigned char* blk, int offset, int* index_saver, int* save_to, unsigned char last_insert[8]);
 
 #endif

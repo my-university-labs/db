@@ -19,10 +19,16 @@ int read_a_data(int addr);
 
 int project(char* rel, char* col);
 
-int combine(int addr1, int addr2);
+int join(int addr1, int addr2);
 
 int intersect(int addr1, int addr2);
 
 int except(int addr1, int addr2);
+
+int nest_loop_join(int addr1, int addr2);
+
+int sort_merge_join(int addr1, int addr2);
+
+int hash_join(int addr1, int addr2);
 
 #endif

@@ -94,7 +94,6 @@ int read_data(int addr)
 }
 int read_a_data(int addr)
 {
-    printf("--------------- Read A Data ----------------\n");
     int i;
     int num, times;
     Buffer buf;
@@ -123,22 +122,21 @@ int read_a_data(int addr)
 }
 int liner_search(char* rel, char* col, int op, int value)
 {
-    printf("--------------- liner Search ----------------\n");
     int i;
     Buffer buf;
-    unsigned char *blk, *blk_save;
-    int addr[2], offset, times, data, r_times = 0;
+    unsigned char *blk, *blk_saver;
+    int addr[2], offset, times, data, index_saver = 0;
     /* when find -> save it into there */
-    int next_addr, result_addr, result_now_addr, result_next_addr;
-    result_addr = get_next_addr() + MAX;
-    result_now_addr = result_addr;
+    int next_addr, start_addr, save_to;
+    start_addr = get_next_addr() + MAX;
+    save_to = start_addr;
     /* get start addr of relation */
     get_start_addr_from_file(rel, col, addr);
     offset = addr[1];
     next_addr = addr[0];
 
     init_buf(&buf);
-    blk_save = getNewBlockInBuffer(&buf);
+    blk_saver = getNewBlockInBuffer(&buf);
     /* read blk from disk and save it into buffer */
     while (next_addr) {
         read_blk(next_addr, &buf, &blk);
@@ -147,35 +145,18 @@ int liner_search(char* rel, char* col, int op, int value)
         for (i = 0; i < times; ++i) {
             data = convert(blk + 8 * i + offset * 4);
             if (compare(data, value, op)) {
-                if (r_times >= 7) {
-                    /* write result into disk */
-                    r_times = 0;
-                    save(blk_save + 7 * 8, 7);
-                    result_next_addr = get_next_addr() + MAX;
-                    save(blk_save + 7 * 8 + 4, result_next_addr);
-                    write_blk(blk_save, result_now_addr, &buf);
-                    result_now_addr = result_next_addr;
-                    freeBlockInBuffer(blk_save, &buf);
-                    blk_save = getNewBlockInBuffer(&buf);
-                }
-                memcpy(blk_save + r_times * 8, blk + 8 * i, 8);
-                ++r_times;
+                save_blk(&buf, &blk_saver, blk + i * 8, &index_saver, &save_to);
             }
         }
         next_addr = convert(blk + 8 * 7 + 4);
         /* free blk */
         freeBlockInBuffer(blk, &buf);
     }
-    save(blk_save + 7 * 8, r_times);
-    save(blk_save + 8 * 7 + 4, 0);
+    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
 
-    write_blk(blk_save, result_now_addr, &buf);
     freeBuffer(&buf);
-    return result_addr;
+    return start_addr;
 }
-/**
- *
-*/
 static int move_pointer(int addr, int value, Buffer* buf)
 {
     unsigned char* blk;
@@ -192,12 +173,12 @@ static int move_pointer(int addr, int value, Buffer* buf)
 }
 static int save_data_for_b_search(Buffer* buf, int addr, int op, int value)
 {
-    int times, timer = 0, data, in = 0, end = 0;
-    int start_addr, now_addr, next_addr, tmp_addr;
+    int times, index_saver = 0, data, in = 0, end = 0;
+    int start_addr, save_to, tmp_addr;
     start_addr = get_next_addr() + TMPBASE + MAX;
-    now_addr = start_addr;
+    save_to = start_addr;
 
-    unsigned char *blk, *blk_save = getNewBlockInBuffer(buf);
+    unsigned char *blk, *blk_saver = getNewBlockInBuffer(buf);
     while (addr && !end) {
         read_blk(addr, buf, &blk);
         times = convert(blk + 8 * 7);
@@ -206,17 +187,8 @@ static int save_data_for_b_search(Buffer* buf, int addr, int op, int value)
             data = convert(blk + 8 * i);
             if (compare(data, value, op)) {
                 in = 1;
-                if (timer >= 7) {
-                    timer = 0;
-                    save(blk_save + 8 * 7, 7);
-                    next_addr = get_next_addr() + TMPBASE + MAX;
-                    save(blk_save + 7 * 8 + 4, next_addr);
-                    write_blk(blk_save, now_addr, buf);
-                    now_addr = next_addr;
-                    blk_save = getNewBlockInBuffer(buf);
-                }
-                memcpy(blk_save + timer * 8, blk + 8 * i, 8);
-                ++timer;
+                save_blk(buf, &blk_saver, blk + i * 8, &index_saver, &save_to);
+
             } else if (in) {
                 end = 1;
                 break;
@@ -225,9 +197,7 @@ static int save_data_for_b_search(Buffer* buf, int addr, int op, int value)
         freeBlockInBuffer(blk, buf);
         addr = tmp_addr;
     }
-    save(blk_save + 8 * 7, timer);
-    save(blk_save + 7 * 8 + 4, 0);
-    write_blk(blk_save, now_addr, buf);
+    save_last_blk(buf, &blk_saver, index_saver, &save_to);
     return start_addr;
 }
 int binary_search(char* rel, char* col, int op, int value)
@@ -292,13 +262,13 @@ int project(char* rel, char* col)
             data = convert(blk + 8 * i + offset * 4);
             if (!mark[data]) {
                 mark[data] = 1;
-                save_info(&buf, &blk_saver, blk + i * 8, &index_saver, 0, &save_to, 0);
+                save_blk(&buf, &blk_saver, blk + i * 8, &index_saver, &save_to);
             }
         }
         freeBlockInBuffer(blk, &buf);
         addr = tmp_addr;
     }
-    save_info(&buf, &blk_saver, NULL, NULL, index_saver, &save_to, 1);
+    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
     return start_addr;
 }
 
@@ -319,8 +289,8 @@ static int check_blk(Buffer* buf, unsigned char** blk, int* times, int* offset, 
     *offset = 0;
     return 0;
 }
-
-int combine(int addr1, int addr2)
+/* 交集 */
+int intersect(int addr1, int addr2)
 {
     Buffer buf;
     init_buf(&buf);
@@ -330,7 +300,7 @@ int combine(int addr1, int addr2)
     int index_saver = 0;
     blk_saver = getNewBlockInBuffer(&buf);
 
-    char last_insert[8];
+    unsigned char last_insert[8];
     int status1, status2, action, times1 = 0, times2 = 0, offset1 = 0, offset2 = 0;
 
     int start_addr = TMPBASE + get_next_addr() + MAX;
@@ -354,15 +324,102 @@ int combine(int addr1, int addr2)
             ++offset2;
         } else {
             // a = b, check
-            if (memcmp(blk_a + offset1 * 8, last_insert, 8) != 0) {
-                // save it
-                save_info(&buf, &blk_saver, blk_a + offset1 * 8, &index_saver, 0, &save_to, 0);
-                memcpy(last_insert, blk_a + offset1 * 8, 8);
-            }
+            try_to_save_for_set(&buf, &blk_saver, blk_a, offset1, &index_saver, &save_to, last_insert);
             ++offset1;
             ++offset2;
         }
     }
-    save_info(&buf, &blk_saver, NULL, NULL, index_saver, &save_to, 1);
+    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
+    return start_addr;
+}
+
+/* 并集 */
+int join(int addr1, int addr2)
+{
+    Buffer buf;
+    init_buf(&buf);
+    unsigned char *blk_a = NULL, *blk_b = NULL, *blk_saver = NULL;
+    addr1 = n_merge_sort(addr1, 0);
+    addr2 = n_merge_sort(addr2, 0);
+
+    int index_saver = 0;
+    blk_saver = getNewBlockInBuffer(&buf);
+
+    unsigned char last_insert[8];
+    int status1, status2, action, times1 = 0, times2 = 0, offset1 = 0, offset2 = 0;
+
+    int start_addr = TMPBASE + get_next_addr() + MAX;
+    int save_to = start_addr;
+
+    memset(last_insert, 1, 8);
+    blk_saver = getNewBlockInBuffer(&buf);
+    while (1) {
+        status1 = check_blk(&buf, &blk_a, &times1, &offset1, &addr1);
+        status2 = check_blk(&buf, &blk_b, &times2, &offset2, &addr2);
+        action = cmp_tuple(blk_a + offset1 * 8, blk_b + offset2 * 8, 0);
+        if ((action == -1 || status2 == -1) && status1 != -1) {
+            // a < b, save a
+            try_to_save_for_set(&buf, &blk_saver, blk_a, offset1, &index_saver, &save_to, last_insert);
+            ++offset1;
+        } else if ((action == 1 || status1 == -1) && status2 != -1) {
+            // a > b, save b
+            try_to_save_for_set(&buf, &blk_saver, blk_b, offset2, &index_saver, &save_to, last_insert);
+            ++offset2;
+        } else if (action == 0 && status1 != -1 && status2 != -1) {
+            try_to_save_for_set(&buf, &blk_saver, blk_a, offset1, &index_saver, &save_to, last_insert);
+            ++offset1;
+            ++offset2;
+        } else {
+            break;
+        }
+    }
+    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
+    return start_addr;
+}
+/**
+ *  差集
+ * set(addr1) - set(addr2)
+ * @return start_addr of result
+ */
+int except(int addr1, int addr2)
+{
+    Buffer buf;
+    init_buf(&buf);
+    unsigned char *blk_a = NULL, *blk_b = NULL, *blk_saver = NULL;
+    addr1 = n_merge_sort(addr1, 0);
+    addr2 = n_merge_sort(addr2, 0);
+
+    int index_saver = 0;
+    blk_saver = getNewBlockInBuffer(&buf);
+
+    unsigned char last_insert[8];
+    int status1, status2, action, times1 = 0, times2 = 0, offset1 = 0, offset2 = 0;
+
+    int start_addr = TMPBASE + get_next_addr() + MAX;
+    int save_to = start_addr;
+
+    memset(last_insert, 1, 8);
+    blk_saver = getNewBlockInBuffer(&buf);
+    while (addr1 != 0) {
+        status1 = check_blk(&buf, &blk_a, &times1, &offset1, &addr1);
+        status2 = check_blk(&buf, &blk_b, &times2, &offset2, &addr2);
+        action = cmp_tuple(blk_a + offset1 * 8, blk_b + offset2 * 8, 0);
+        if ((action == -1 && status1 != -1) || status2 == -1) {
+            // a < b && still can get next value from addr1, save a
+            // or can not get data from addr2, save a
+            try_to_save_for_set(&buf, &blk_saver, blk_a, offset1, &index_saver, &save_to, last_insert);
+            ++offset1;
+        } else if (action == 1 && status2 != -1) {
+            // a > b, move b
+            ++offset2;
+        } else if (action == 0 && status1 != -1 && status2 != -1) {
+            // a == b, pass and move forward
+            ++offset1;
+            ++offset2;
+        } else {
+            printf("Else - >\n");
+        }
+    }
+    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
     return start_addr;
 }

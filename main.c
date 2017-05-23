@@ -46,24 +46,52 @@ void p_action()
     read_data(addr);
     printf("Done!\n");
 }
-void union_action()
+void join_action()
 {
     int r1[2], r2[2];
     get_start_addr_from_file(rrel, rcol1, r1);
     get_start_addr_from_file(srel, scol1, r2);
-    combine(r1[0], r2[0]);
+    int addr = join(r1[0], r2[0]);
+    read_data(addr);
+}
+void intersect_action()
+{
+    int r1[2], r2[2];
+    get_start_addr_from_file(rrel, rcol1, r1);
+    get_start_addr_from_file(srel, scol1, r2);
+    int addr = intersect(r1[0], r2[0]);
+    read_data(addr);
+}
+void except_action()
+{
+    int r1[2], r2[2];
+    get_start_addr_from_file(rrel, rcol1, r1);
+    get_start_addr_from_file(srel, scol1, r2);
+    int addr = except(r1[0], r2[0]);
+    read_data(addr);
 }
 void print_menu()
 {
-    printf("|----------------------- Menu ------------------------|\n");
-    printf("| 1. Create Data                                      |\n");
-    printf("| 2. Look Data                                        |\n");
-    printf("| 3. Liner Search                                     |\n");
-    printf("| 4. Binary Search                                    |\n");
-    printf("| 5. Project                                          |\n");
-    printf("| 6. union                                            |\n");
-    printf("| 0. END                                              |\n");
-    printf("|-----------------------------------------------------|\n");
+    printf("|------------------------ Menu ------------------------|\n");
+    printf("|  1. Create Data                                      |\n");
+    printf("|  2. Look Data                                        |\n");
+    printf("|                ---- Search Option ----               |\n");
+    printf("|  3. Liner Search                                     |\n");
+    printf("|  4. Binary Search                                    |\n");
+    printf("|                ---- Project Option ----              |\n");
+    printf("|  5. Project                                          |\n");
+    printf("|                 ---- Set Option ----                 |\n");
+    printf("|  6. Join                                             |\n");
+    printf("|  7. Intersect                                        |\n");
+    printf("|  8. Except                                           |\n");
+    printf("|                 ---- Connection ----                 |\n");
+    printf("|  9. Nest Loop Join                                   |\n");
+    printf("| 10. Sort Merge Join                                  |\n");
+    printf("| 11. Hash Join                                        |\n");
+    printf("|                    ---- Index ----                   |\n");
+    printf("| 12. Index                                            |\n");
+    printf("|  0. END                                              |\n");
+    printf("|------------------------------------------------------|\n");
     printf("Input You Choice Now: ");
 }
 int main(int argc, char** argv)
@@ -82,7 +110,6 @@ int main(int argc, char** argv)
                 scanf("%d", &option);
             }
         }
-        fflush(stdin);
         switch (option) {
         case 1:
             generate_data();
@@ -101,7 +128,13 @@ int main(int argc, char** argv)
             p_action();
             break;
         case 6:
-            union_action();
+            join_action();
+            break;
+        case 7:
+            intersect_action();
+            break;
+        case 8:
+            except_action();
             break;
         case 0:
             finished
