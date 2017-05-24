@@ -140,7 +140,7 @@ void print_menu()
     printf("|                ---- Project Option ----              |\n");
     printf("|  7. Project                                          |\n");
     printf("|                 ---- Set Option ----                 |\n");
-    printf("|  8. Join                                             |\n");
+    printf("|  8. Union                                            |\n");
     printf("|  9. Intersect                                        |\n");
     printf("| 10. Except                                           |\n");
     printf("|                 ---- Connection ----                 |\n");
