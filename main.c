@@ -12,100 +12,138 @@ char *srel = "S", *scol1 = "C", *scol2 = "D";
 
 void generate_data()
 {
+    int r, s;
     printf("Try to create data for R...\n");
-    int r = create_data(rrel, rcol1, 1, 40, rcol2, 1, 1000, 2);
+    r = create_data(rrel, rcol1, 1, 40, rcol2, 1, 1000, 2);
     printf("Try to create data for S...\n");
-    int s = create_data(srel, scol1, 20, 60, scol2, 1, 1000, 4);
+    s = create_data(srel, scol1, 20, 60, scol2, 1, 1000, 4);
     printf("Done!\n");
+}
+void do_read()
+{
+    int addr[2];
+    get_start_addr_from_file(rrel, rcol1, addr);
+    read_data(addr[0]);
+    get_start_addr_from_file(srel, scol1, addr);
+    read_data(addr[0]);
+}
+void do_merge()
+{
+    int addr1, addr2, r1[2], r2[2];
+    get_start_addr_from_file(rrel, rcol1, r1);
+    get_start_addr_from_file(srel, scol1, r2);
+    addr1 = n_merge_sort(r1[0], 0);
+    addr2 = n_merge_sort(r2[0], 0);
+    read_data(addr1);
+    read_data(addr2);
 }
 void l_search()
 {
+    int r, s, addr;
     printf("Liner search for R.A = 40 or S.C = 60\n");
-    int line_s_r = liner_search(rrel, rcol1, EQ, 40);
-    int line_s_s = liner_search(srel, scol1, EQ, 60);
-    int addr_merge = link_addr(line_s_r, line_s_s);
+    r = liner_search(rrel, rcol1, EQ, 40);
+    s = liner_search(srel, scol1, EQ, 60);
+    addr = link_addr(r, s);
     printf("Result is :\n");
-    read_data(addr_merge);
+    read_data(addr);
     printf("Done!\n");
 }
 void b_search()
 {
+    int b1, b2, addr;
     printf("Binary search for R.A = 40 or S.C = 60\n");
-    int b1 = binary_search(rrel, rcol1, EQ, 40);
-    int b2 = binary_search(srel, scol1, EQ, 60);
-    int addr_merge = link_addr(b1, b2);
+    b1 = binary_search(rrel, rcol1, EQ, 40);
+    b2 = binary_search(srel, scol1, EQ, 60);
+    addr = link_addr(b1, b2);
     printf("Result is: \n");
-    read_data(addr_merge);
+    read_data(addr);
     printf("Done!\n");
+}
+void index_search()
+{
+    int what, addr;
+    char buf[16];
+    printf("Input which Table You Want To Search(S/R)?\n");
+    scanf("%s", buf);
+    printf("What You Want To Search?\n");
+    scanf("%d", &what);
+    addr = search_hash_index(buf, what);
+    read_data(addr);
 }
 void p_action()
 {
+    int addr;
     printf("Project for R.A\n");
-    int addr = project(rrel, rcol1);
+    addr = project(rrel, rcol1);
     printf("Result is: \n");
     read_data(addr);
     printf("Done!\n");
 }
 void join_action()
 {
-    int r1[2], r2[2];
+    int addr, r1[2], r2[2];
     get_start_addr_from_file(rrel, rcol1, r1);
     get_start_addr_from_file(srel, scol1, r2);
-    int addr = join(r1[0], r2[0]);
+    addr = join(r1[0], r2[0]);
     read_data(addr);
 }
 void intersect_action()
 {
-    int r1[2], r2[2];
+    int addr, r1[2], r2[2];
     get_start_addr_from_file(rrel, rcol1, r1);
     get_start_addr_from_file(srel, scol1, r2);
-    int addr = intersect(r1[0], r2[0]);
+    addr = intersect(r1[0], r2[0]);
     read_data(addr);
 }
 void except_action()
 {
-    int r1[2], r2[2];
+    int addr, r1[2], r2[2];
     get_start_addr_from_file(rrel, rcol1, r1);
     get_start_addr_from_file(srel, scol1, r2);
-    int addr = except(r1[0], r2[0]);
+    addr = except(r1[0], r2[0]);
     read_data(addr);
 }
 void nest_connection()
 {
-    int r1[2], r2[2];
+    int addr, r1[2], r2[2];
     get_start_addr_from_file(rrel, rcol1, r1);
     get_start_addr_from_file(srel, scol1, r2);
-    int addr = nested_loop_join(r1[0], r2[0], 0, 0);
+    addr = nested_loop_join(r1[0], r2[0], 0, 0);
     read_data(addr);
 }
 void merge_connection()
 {
-    int r1[2], r2[2];
+    int addr, r1[2], r2[2];
     get_start_addr_from_file(rrel, rcol1, r1);
     get_start_addr_from_file(srel, scol1, r2);
-    int addr = sort_merge_join(r1[0], r2[0], 0, 0);
+    addr = sort_merge_join(r1[0], r2[0], 0, 0);
     read_data(addr);
+}
+void hash_connection()
+{
+    hash_join(rrel, srel);
 }
 void print_menu()
 {
     printf("|------------------------ Menu ------------------------|\n");
     printf("|  1. Create Data                                      |\n");
     printf("|  2. Look Data                                        |\n");
+    printf("|  3. Merge Sort                                       |\n");
     printf("|                ---- Search Option ----               |\n");
-    printf("|  3. Liner Search                                     |\n");
-    printf("|  4. Binary Search                                    |\n");
+    printf("|  4. Liner Search                                     |\n");
+    printf("|  5. Binary Search                                    |\n");
+    printf("|  6. Index                                            |\n");
     printf("|                ---- Project Option ----              |\n");
-    printf("|  5. Project                                          |\n");
+    printf("|  7. Project                                          |\n");
     printf("|                 ---- Set Option ----                 |\n");
-    printf("|  6. Join                                             |\n");
-    printf("|  7. Intersect                                        |\n");
-    printf("|  8. Except                                           |\n");
+    printf("|  8. Join                                             |\n");
+    printf("|  9. Intersect                                        |\n");
+    printf("| 10. Except                                           |\n");
     printf("|                 ---- Connection ----                 |\n");
-    printf("|  9. Nested Loop Join                                   |\n");
-    printf("| 10. Sort Merge Join                                  |\n");
-    printf("| 11. Hash Join                                        |\n");
-    printf("|                    ---- Index ----                   |\n");
-    printf("| 12. Index                                            |\n");
+    printf("| 11. Nested Loop Join                                 |\n");
+    printf("| 12. Sort Merge Join                                  |\n");
+    printf("| 13. Hash Join                                        |\n");
+    printf("|                    ---------------                   |\n");
     printf("|  0. END                                              |\n");
     printf("|------------------------------------------------------|\n");
     printf("Input You Choice Now: ");
@@ -113,10 +151,7 @@ void print_menu()
 int main(int argc, char** argv)
 {
     init();
-    int option;
-    int addr, addr_saver[2];
-
-    // n_merge_sort(s, 0);
+    int option, addr;
     int finished = 0;
     while (!finished) {
         print_menu();
@@ -131,52 +166,44 @@ int main(int argc, char** argv)
             generate_data();
             break;
         case 2:
-            get_start_addr_from_file(rrel, rcol1, addr_saver);
-            read_data(addr_saver[0]);
-            get_start_addr_from_file(srel, scol1, addr_saver);
-            read_data(addr_saver[0]);
+            do_read();
             break;
         case 3:
-            l_search();
+            // n_merge_sort();
+            do_merge();
             break;
         case 4:
-            b_search();
+            l_search();
             break;
         case 5:
-            p_action();
+            b_search();
             break;
         case 6:
-            join_action();
+            index_search();
             break;
         case 7:
-            intersect_action();
+            p_action();
             break;
         case 8:
-            except_action();
+            join_action();
             break;
         case 9:
-            nest_connection();
+            intersect_action();
             break;
         case 10:
-            merge_connection();
+            except_action();
             break;
         case 11:
-            addr = hash_join(1, 1);
-            // read_data(addr);
+            nest_connection();
             break;
         case 12:
-            search_hash_index(rrel, 40);
-            search_hash_index(srel, 40);
-
-            // drop_hash_index();
-            // create_hash_index(700001, 0, 0);
+            merge_connection();
             break;
         case 13:
-            read_data(53195);
+            hash_connection();
             break;
         case 0:
-            finished
-                = 1;
+            finished = 1;
             break;
         default:
             printf("Bad Option!\n");

@@ -491,19 +491,19 @@ int sort_merge_join(int addr1, int addr2, int which1, int which2)
             tmp_nu2 = 0;
         }
         if (status1 == -1 || status2 == -1)
-        break;
+            break;
     }
 
     save_last_blk(&buf, blk_saver, index_saver, save_to);
     freeBuffer(&buf);
     return start_addr;
 }
-int hash_join(int addr1, int addr2)
+int hash_join(char* rel1, char* rel2)
 {
     Buffer buf;
-    int i, start_addr, open1, open2, sum = 0;
+    int i, start_addr, open1, open2, sum = 0, addr1, addr2;
     FILE* fp_try;
-    char filename1[128], filename2[128], *r = "R", *s = "S";
+    char filename1[128], filename2[128];
     unsigned char *blk_a = NULL, *blk_b = NULL, *blk_ra = NULL, *blk_rb = NULL, *blk_saver = NULL, tmp1[8], tmp2[8];
     int times1, times2, offset1, offset2, where1, where2, which1, which2, next1, next2, index_saver = 0, save_to = get_next_addr(JOIN_BASE);
     init_buf(&buf);
@@ -512,8 +512,8 @@ int hash_join(int addr1, int addr2)
     for (i = 0; i <= 60; ++i) {
         open1 = 0;
         open2 = 0;
-        addr1 = hash_index_base(r) + i;
-        addr2 = hash_index_base(s) + i;
+        addr1 = hash_index_base(rel1) + i;
+        addr2 = hash_index_base(rel2) + i;
 
         sprintf(filename1, "blk/%d.blk", addr1);
         sprintf(filename2, "blk/%d.blk", addr2);
@@ -547,7 +547,6 @@ int hash_join(int addr1, int addr2)
                         where2 = convert(blk_b + offset2 * 8);
                         which2 = convert(blk_b + offset2 * 8 + 4);
                         read_blk(where2, &buf, &blk_rb);
-                        printf("%d %d %d %d %d\n", ++sum, convert(blk_ra + which1 * 8), convert(blk_ra + which1 * 8 + 4), convert(blk_rb + which2 * 8), convert(blk_rb + which2 * 8 + 4));
                         memset(tmp2, 0, 8);
                         memcpy(tmp2, blk_rb + which2 * 8 + 4, 4);
                         save_blk(&buf, &blk_saver, tmp1, &index_saver, &save_to);
@@ -569,14 +568,17 @@ int hash_join(int addr1, int addr2)
 int search_hash_index(char* rel, int key)
 {
     Buffer buf;
-    unsigned char *blk, *blk_reader;
-    int i, bucket, hash_loc, addr, times, where, which, timer = 0;
+    unsigned char *blk, *blk_reader, *blk_saver;
+    int i, bucket, hash_loc, addr, times, where, which, timer = 0, index_saver = 0, start_addr, save_to;
+    start_addr = get_next_addr(SEARCH_BASE);
+    save_to = start_addr;
 
     init_buf(&buf);
     bucket = hash_function(key);
     hash_loc = hash_index_base(rel) + bucket;
     addr = hash_loc;
     printf("Tuple in Bucket %d, Location is %d\n", bucket, hash_loc);
+    blk_saver = getNewBlockInBuffer(&buf);
     while (addr != 0) {
         read_blk(addr, &buf, &blk);
         times = convert(blk + 7 * 8);
@@ -587,10 +589,12 @@ int search_hash_index(char* rel, int key)
             read_blk(where, &buf, &blk_reader);
             printf("%3d Find it: %d %d\t\t(location: %7d, offset %2d)\n",
                 ++timer, convert(blk_reader + which * 8), convert(blk_reader + which * 8 + 4), where, which);
+            save_blk(&buf, &blk_saver, blk_reader + which * 8, &index_saver, &save_to);
             freeBlockInBuffer(blk_reader, &buf);
         }
         freeBlockInBuffer(blk, &buf);
     }
+    save_last_blk(&buf, blk_saver, index_saver, save_to);
     freeBuffer(&buf);
-    return 0;
+    return start_addr;
 }
