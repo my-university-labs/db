@@ -63,7 +63,6 @@ int get_next_addr(int base)
 /* create data for tuple */
 int get_a_data(int begin, int end)
 {
-    return 40;
     // if (hoho++ % 2 == 0)
     //     ++lala;
     // if (lala > 40)
@@ -262,6 +261,7 @@ void blks_sort(unsigned int start_addr, int offset, TmpSegments* tmps)
         /* get next */
         start_addr = next_addr;
     }
+    freeBuffer(&buf);
 }
 
 static void adjust(int i, LoserTree* tree)
@@ -412,6 +412,7 @@ int n_merge_sort(unsigned int start_addr, int offset)
         if (tmps.times == 1)
             break;
     }
+
     return seg_start_addr;
 }
 void save_blk(Buffer* buf, unsigned char** des, unsigned char* from, int* index, int* save_to)
@@ -429,12 +430,13 @@ void save_blk(Buffer* buf, unsigned char** des, unsigned char* from, int* index,
     memcpy(*des + *index * 8, from, 8);
     ++(*index);
 }
-void save_last_blk(Buffer* buf, unsigned char** from, int times, int* save_to)
+void save_last_blk(Buffer* buf, unsigned char* from, int times, int save_to)
 {
+    printf("--- %d %d\n", times, save_to);
 
-    save(*from + 7 * 8, times);
-    save(*from + 7 * 8 + 4, 0);
-    write_blk(*from, *save_to, buf);
+    save(from + 7 * 8, times);
+    save(from + 7 * 8 + 4, 0);
+    write_blk(from, save_to, buf);
 }
 int cmp_tuple(unsigned char* a, unsigned char* b, int offset)
 {
@@ -526,7 +528,7 @@ int read_a_data(int addr)
 
 static char hash_index_marker[MAX];
 
-void init_hash_index()
+void init_hash_index(char* rel)
 {
     int i;
     for (i = 0; i < 100; ++i) {
@@ -535,6 +537,7 @@ void init_hash_index()
     for (i = 100; i < MAX; ++i) {
         hash_index_marker[i] = FALSE;
     }
+    drop_hash_index(rel);
 }
 static int get_new_blk_for_index()
 {
@@ -547,20 +550,14 @@ static int get_new_blk_for_index()
     }
     return -1;
 }
-void drop_hash_index()
+void drop_hash_index(char* rel)
 {
     int i;
     char filename[128];
     for (i = 0; i < 100; ++i) {
-        sprintf(filename, "blk/%d.blk", INDEX_BASE_R + i);
+        sprintf(filename, "blk/%d.blk", hash_index_base(rel) + i);
         if (remove(filename) == 0) {
-            printf("Remove Index file %s\n", filename);
-        }
-    }
-    for (i = 0; i < 100; ++i) {
-        sprintf(filename, "blk/%d.blk", INDEX_BASE_S + i);
-        if (remove(filename) == 0) {
-            printf("Remove Index file %s\n", filename);
+            printf("Remove Old Index File %s\n", filename);
         }
     }
 }

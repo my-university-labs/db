@@ -59,7 +59,8 @@ int create_data(char* rel, char* col1, int begin1, int end1, char* col2, int beg
     int start_addr = get_next_addr(VALUE_BASE);
     int next_addr = start_addr;
 
-    init_hash_index();
+    init_hash_index(rel);
+
     save_start_addr_into_file(rel, col1, col2, start_addr);
     for (i = 0; i < times; ++i) {
         next_addr = do_create_data(next_addr, begin1, end1, begin2, end2, times - i - 1, rel);
@@ -99,7 +100,7 @@ int liner_search(char* rel, char* col, int op, int value)
         /* free blk */
         freeBlockInBuffer(blk, &buf);
     }
-    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
+    save_last_blk(&buf, blk_saver, index_saver, save_to);
 
     freeBuffer(&buf);
     return start_addr;
@@ -144,7 +145,7 @@ static int save_data_for_b_search(Buffer* buf, int addr, int op, int value)
         freeBlockInBuffer(blk, buf);
         addr = tmp_addr;
     }
-    save_last_blk(buf, &blk_saver, index_saver, &save_to);
+    save_last_blk(buf, blk_saver, index_saver, save_to);
     return start_addr;
 }
 int binary_search(char* rel, char* col, int op, int value)
@@ -179,6 +180,7 @@ int binary_search(char* rel, char* col, int op, int value)
     }
 
     int t = save_data_for_b_search(&buf, addr_buf[mid], EQ, value);
+    freeBuffer(&buf);
     fclose(fp);
     return t;
 }
@@ -194,13 +196,12 @@ int project(char* rel, char* col)
     }
     get_start_addr_from_file(rel, col, addr_saver);
     int addr = addr_saver[0], offset = addr_saver[1];
-
     int times, index_saver = 0, data;
     int start_addr, save_to, tmp_addr;
     start_addr = get_next_addr(TMP_BASE);
     save_to = start_addr;
 
-    unsigned char *blk, *blk_saver = getNewBlockInBuffer(&buf);
+    unsigned char *blk, *blk_saver = getNewBlockInBuffer(&buf), tmp[8];
     while (addr) {
         read_blk(addr, &buf, &blk);
         times = convert(blk + 8 * 7);
@@ -209,13 +210,16 @@ int project(char* rel, char* col)
             data = convert(blk + 8 * i + offset * 4);
             if (!mark[data]) {
                 mark[data] = 1;
-                save_blk(&buf, &blk_saver, blk + i * 8, &index_saver, &save_to);
+                memset(tmp, 0, 8);
+                memcpy(tmp, blk + i * 8, 4);
+                save_blk(&buf, &blk_saver, tmp, &index_saver, &save_to);
             }
         }
         freeBlockInBuffer(blk, &buf);
         addr = tmp_addr;
     }
-    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
+    save_last_blk(&buf, blk_saver, index_saver, save_to);
+    freeBuffer(&buf);
     return start_addr;
 }
 
@@ -276,7 +280,8 @@ int intersect(int addr1, int addr2)
             ++offset2;
         }
     }
-    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
+    save_last_blk(&buf, blk_saver, index_saver, save_to);
+    freeBuffer(&buf);
     return start_addr;
 }
 
@@ -320,7 +325,8 @@ int join(int addr1, int addr2)
             break;
         }
     }
-    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
+    save_last_blk(&buf, blk_saver, index_saver, save_to);
+    freeBuffer(&buf);
     return start_addr;
 }
 /**
@@ -367,7 +373,8 @@ int except(int addr1, int addr2)
             printf("Else - >\n");
         }
     }
-    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
+    save_last_blk(&buf, blk_saver, index_saver, save_to);
+    freeBuffer(&buf);
     return start_addr;
 }
 int nested_loop_join(int addr1, int addr2, int which1, int which2)
@@ -409,7 +416,8 @@ int nested_loop_join(int addr1, int addr2, int which1, int which2)
         }
         freeBlockInBuffer(blk_a, &buf);
     }
-    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
+    save_last_blk(&buf, blk_saver, index_saver, save_to);
+    freeBuffer(&buf);
     return start_addr;
 }
 int sort_merge_join(int addr1, int addr2, int which1, int which2)
@@ -432,9 +440,12 @@ int sort_merge_join(int addr1, int addr2, int which1, int which2)
     memset(tmp2, 0, sizeof(tmp1));
     addr1 = n_merge_sort(addr1, 0);
     addr2 = n_merge_sort(addr2, 0);
+
+    read_data(addr1);
+    read_data(addr2);
     blk_saver = getNewBlockInBuffer(&buf);
 
-    while (addr1 != 0 && addr2 != 0) {
+    while (1) {
         status1 = check_blk(&buf, &blk_a, &times1, &offset1, &addr1);
         status2 = check_blk(&buf, &blk_b, &times2, &offset2, &addr2);
         v1 = convert(blk_a + offset1 * 8 + which1 * 4);
@@ -462,6 +473,7 @@ int sort_merge_join(int addr1, int addr2, int which1, int which2)
             }
         }
         if (tmp_nu1 > 0 && tmp_nu2 > 0) {
+            printf("target %d\n", target);
             // insert
             for (i = 0; i < tmp_nu1; ++i) {
                 for (j = 0; j < tmp_nu2; ++j) {
@@ -478,21 +490,80 @@ int sort_merge_join(int addr1, int addr2, int which1, int which2)
             tmp_nu1 = 0;
             tmp_nu2 = 0;
         }
+        if (status1 == -1 || status2 == -1)
+        break;
     }
-    if (tmp_nu1 > 0 && tmp_nu2 > 0) {
-        // insert
-        for (i = 0; i < tmp_nu1; ++i) {
-            for (j = 0; j < tmp_nu2; ++j) {
-                memcpy(tmp, &target, 4);
-                memcpy(tmp + 4, &tmp1[i], 4);
-                save_blk(&buf, &blk_saver, tmp, &index_saver, &save_to);
-                memcpy(tmp, &tmp2[j], 4);
-                memset(tmp + 4, 0, 4);
-                save_blk(&buf, &blk_saver, tmp, &index_saver, &save_to);
+
+    save_last_blk(&buf, blk_saver, index_saver, save_to);
+    freeBuffer(&buf);
+    return start_addr;
+}
+int hash_join(int addr1, int addr2)
+{
+    Buffer buf;
+    int i, start_addr, open1, open2, sum = 0;
+    FILE* fp_try;
+    char filename1[128], filename2[128], *r = "R", *s = "S";
+    unsigned char *blk_a = NULL, *blk_b = NULL, *blk_ra = NULL, *blk_rb = NULL, *blk_saver = NULL, tmp1[8], tmp2[8];
+    int times1, times2, offset1, offset2, where1, where2, which1, which2, next1, next2, index_saver = 0, save_to = get_next_addr(JOIN_BASE);
+    init_buf(&buf);
+    start_addr = save_to;
+    blk_saver = getNewBlockInBuffer(&buf);
+    for (i = 0; i <= 60; ++i) {
+        open1 = 0;
+        open2 = 0;
+        addr1 = hash_index_base(r) + i;
+        addr2 = hash_index_base(s) + i;
+
+        sprintf(filename1, "blk/%d.blk", addr1);
+        sprintf(filename2, "blk/%d.blk", addr2);
+
+        if ((fp_try = fopen(filename1, "r"))) {
+            open1 = 1;
+            fclose(fp_try);
+        }
+        if ((fp_try = fopen(filename2, "r"))) {
+            open2 = 1;
+            fclose(fp_try);
+        }
+
+        if (!open1 || !open2)
+            continue;
+
+        for (next1 = addr1; next1 != 0;) {
+            read_blk(next1, &buf, &blk_a);
+            times1 = convert(blk_a + 7 * 8);
+            next1 = convert(blk_a + 7 * 8 + 4);
+            for (next2 = addr2; next2 != 0;) {
+                read_blk(next2, &buf, &blk_b);
+                times2 = convert(blk_b + 7 * 8);
+                next2 = convert(blk_b + 7 * 8 + 4);
+                for (offset1 = 0; offset1 < times1; ++offset1) {
+                    where1 = convert(blk_a + offset1 * 8);
+                    which1 = convert(blk_a + offset1 * 8 + 4);
+                    read_blk(where1, &buf, &blk_ra);
+                    memcpy(tmp1, blk_ra + which1 * 8, 8);
+                    for (offset2 = 0; offset2 < times2; ++offset2) {
+                        where2 = convert(blk_b + offset2 * 8);
+                        which2 = convert(blk_b + offset2 * 8 + 4);
+                        read_blk(where2, &buf, &blk_rb);
+                        printf("%d %d %d %d %d\n", ++sum, convert(blk_ra + which1 * 8), convert(blk_ra + which1 * 8 + 4), convert(blk_rb + which2 * 8), convert(blk_rb + which2 * 8 + 4));
+                        memset(tmp2, 0, 8);
+                        memcpy(tmp2, blk_rb + which2 * 8 + 4, 4);
+                        save_blk(&buf, &blk_saver, tmp1, &index_saver, &save_to);
+                        save_blk(&buf, &blk_saver, tmp2, &index_saver, &save_to);
+                        freeBlockInBuffer(blk_rb, &buf);
+                    }
+                    freeBlockInBuffer(blk_ra, &buf);
+                }
+                freeBlockInBuffer(blk_b, &buf);
             }
+            freeBlockInBuffer(blk_a, &buf);
         }
     }
-    save_last_blk(&buf, &blk_saver, index_saver, &save_to);
+    save_last_blk(&buf, blk_saver, index_saver, save_to);
+    read_data(start_addr);
+    freeBuffer(&buf);
     return start_addr;
 }
 int search_hash_index(char* rel, int key)
@@ -520,5 +591,6 @@ int search_hash_index(char* rel, int key)
         }
         freeBlockInBuffer(blk, &buf);
     }
+    freeBuffer(&buf);
     return 0;
 }

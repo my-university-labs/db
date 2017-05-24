@@ -82,7 +82,7 @@ int dropBlockOnDisk(unsigned int addr)
 unsigned char* readBlockFromDisk(unsigned int addr, Buffer* buf)
 {
     char filename[40];
-    unsigned char *blkPtr, *bytePtr;
+    unsigned char *blkPtr = NULL, *bytePtr = NULL;
     char ch;
 
     if (buf->numFreeBlk == 0) {
@@ -110,6 +110,7 @@ unsigned char* readBlockFromDisk(unsigned int addr, Buffer* buf)
     *blkPtr = BLOCK_UNAVAILABLE;
     blkPtr++;
     bytePtr = blkPtr;
+
     while (bytePtr < blkPtr + buf->blkSize) {
         ch = fgetc(fp);
         *bytePtr = ch;

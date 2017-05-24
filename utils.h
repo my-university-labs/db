@@ -88,7 +88,7 @@ void test_loser_tree(int start);
 
 void save_blk(Buffer* buf, unsigned char** des, unsigned char* from, int* index, int* save_to);
 
-void save_last_blk(Buffer* buf, unsigned char** from, int times, int* save_to);
+void save_last_blk(Buffer* buf, unsigned char* from, int times, int save_to);
 
 int cmp_tuple(unsigned char* a, unsigned char* b, int offset);
 
@@ -102,9 +102,9 @@ int read_data(int addr);
 
 int hash_index_base(char* rel);
 
-void init_hash_index();
+void init_hash_index(char* rel);
 
-void drop_hash_index();
+void drop_hash_index(char* rel);
 
 int create_hash_index(int addr, int offset, int key, char* rel);
 #endif

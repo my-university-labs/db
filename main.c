@@ -114,7 +114,7 @@ int main(int argc, char** argv)
 {
     init();
     int option;
-    int addr_saver[2];
+    int addr, addr_saver[2];
 
     // n_merge_sort(s, 0);
     int finished = 0;
@@ -132,6 +132,8 @@ int main(int argc, char** argv)
             break;
         case 2:
             get_start_addr_from_file(rrel, rcol1, addr_saver);
+            read_data(addr_saver[0]);
+            get_start_addr_from_file(srel, scol1, addr_saver);
             read_data(addr_saver[0]);
             break;
         case 3:
@@ -158,10 +160,19 @@ int main(int argc, char** argv)
         case 10:
             merge_connection();
             break;
+        case 11:
+            addr = hash_join(1, 1);
+            // read_data(addr);
+            break;
         case 12:
+            search_hash_index(rrel, 40);
             search_hash_index(srel, 40);
+
             // drop_hash_index();
             // create_hash_index(700001, 0, 0);
+            break;
+        case 13:
+            read_data(53195);
             break;
         case 0:
             finished
