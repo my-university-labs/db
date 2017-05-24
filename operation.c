@@ -568,6 +568,8 @@ int hash_join(char* rel1, char* rel2)
 int search_hash_index(char* rel, int key)
 {
     Buffer buf;
+    FILE* fp_try;
+    char filename[128];
     unsigned char *blk, *blk_reader, *blk_saver;
     int i, bucket, hash_loc, addr, times, where, which, timer = 0, index_saver = 0, start_addr, save_to;
     start_addr = get_next_addr(SEARCH_BASE);
@@ -578,6 +580,12 @@ int search_hash_index(char* rel, int key)
     hash_loc = hash_index_base(rel) + bucket;
     addr = hash_loc;
     printf("Tuple in Bucket %d, Location is %d\n", bucket, hash_loc);
+    sprintf(filename, "blk/%d.blk", hash_loc);
+    if (!(fp_try = fopen(filename, "r"))) {
+        return -1;
+    }
+    fclose(fp_try);
+
     blk_saver = getNewBlockInBuffer(&buf);
     while (addr != 0) {
         read_blk(addr, &buf, &blk);

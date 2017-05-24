@@ -68,6 +68,10 @@ void index_search()
     printf("What You Want To Search?\n");
     scanf("%d", &what);
     addr = search_hash_index(buf, what);
+    if (addr == -1) {
+        printf("Index FIle For This Key Not Exists\n");
+        return;
+    }
     read_data(addr);
 }
 void p_action()

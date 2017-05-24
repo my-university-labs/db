@@ -69,11 +69,10 @@ void adjust(int i, LoserTree* tree)
 
 void initLoserTree(LoserTree* tree, Queue* queue, Buffer* buf)
 {
-    int have;
-    int index = 0;
+    int i, have, index = 0;
     unsigned int addr;
     unsigned char* blk;
-    for (int i = 0; i < MERGE_N; ++i) {
+    for (i = 0; i < MERGE_N; ++i) {
         have = 0;
         for (; index < TMP_SIZE; ++index) {
             if (queue->times > 0 && buf->numFreeBlk > 0) {
@@ -91,26 +90,27 @@ void initLoserTree(LoserTree* tree, Queue* queue, Buffer* buf)
             tree->leaves[i + 1] = TMPBASE;
     }
     tree->leaves[0] = -1;
-    for (int i = 0; i < MERGE_N; i++)
+    for (i = 0; i < MERGE_N; i++)
         tree->loserTree[i] = 0;
-    for (int i = MERGE_N; i > 0; i--)
+    for (i = MERGE_N; i > 0; i--)
         adjust(i, tree);
 }
 
 int get_min_from_loser_tree(LoserTree* tree, Buffer* buf, int value[2])
 {
-    int index = tree->loserTree[0];
-    int result = tree->leaves[index];
+    int index, result, times, offset, addr;
+    index = tree->loserTree[0];
+    result = tree->leaves[index];
     if (result == TMPBASE)
         return result;
     value[0] = convert(tree->blk[index] + tree->offset[index] * 8);
     value[1] = convert(tree->blk[index] + tree->offset[index] * 8 + 4);
-    int times = convert(tree->blk[index] + 7 * 8);
-    int offset = ++tree->offset[index];
+    times = convert(tree->blk[index] + 7 * 8);
+    offset = ++tree->offset[index];
     if (offset < times) {
         tree->leaves[index] = convert(tree->blk[index] + tree->offset[index] * 8);
     } else {
-        int addr = convert(tree->blk[index] + 7 * 8 + 4);
+        addr = convert(tree->blk[index] + 7 * 8 + 4);
         if (addr == 0)
             tree->leaves[index] = TMPBASE;
         else {
@@ -128,8 +128,7 @@ int get_min_from_loser_tree(LoserTree* tree, Buffer* buf, int value[2])
  */
 int cmp_blk_item(const void* a, const void* b)
 {
-    int tmp1 = 0, tmp2 = 0;
-    int tmp3 = 0, tmp4 = 0;
+    int tmp1 = 0, tmp2 = 0, tmp3 = 0, tmp4 = 0;
     memcpy(&tmp1, a, sizeof(int));
     memcpy(&tmp2, b, sizeof(int));
     memcpy(&tmp3, (a + 4), sizeof(int));
@@ -156,7 +155,6 @@ void blks_sort(unsigned int start_addr, int offset, Queue* queue)
     unsigned char* blk = NULL;
     init_buf(&buf);
     init_queue(queue);
-    int i = 0;
     while (start_addr) {
         /* read blk */
         read_blk(start_addr, &buf, &blk);
@@ -179,24 +177,19 @@ void blks_sort(unsigned int start_addr, int offset, Queue* queue)
 
 int n_merge_sort(unsigned int start_addr, int offset)
 {
+    FILE* fp;
     Buffer buf;
     Queue queue;
     LoserTree tree;
-    int value[2];
-
-    int start_save_index = 0;
     char filename[64];
-    FILE* fp;
-
-    int r, in, loc;
-    int index, tmp;
+    int value[2], start_save_index = 0;
+    int r, in, loc, index, tmp;
     int seg_start_addr, seg_now_addr, seg_next_addr;
     unsigned char *blk = NULL, *rblk = NULL;
     blks_sort(start_addr, offset, &queue);
     while (1) {
         in = 0;
         loc = 0;
-
         seg_start_addr = get_next_addr(MERGE_BASE);
         seg_now_addr = seg_start_addr;
         init_buf(&buf);
@@ -328,7 +321,6 @@ int save_start_addr_into_file(char* rel, char* col1, char* col2, int start_addr)
 /* read addr for relation */
 int get_start_addr_from_file(char* rel, char* col, int r[])
 {
-    int i;
     FILE* fp;
     char buf[64];
     int addr, addr1, addr2;
@@ -357,10 +349,10 @@ int link_addr(int addr1, int addr2)
 {
     Buffer buf;
     unsigned char* blk;
+    int next = addr1, last;
     /* init buffer */
     init_buf(&buf);
 
-    int next = addr1, last;
     while (next) {
         if (buf.numFreeBlk < 2)
             freeBlockInBuffer(blk, &buf);
@@ -424,8 +416,7 @@ void save_last_blk(Buffer* buf, unsigned char* from, int times, int save_to)
 
 int cmp_tuple(unsigned char* a, unsigned char* b, int offset)
 {
-    int v11, v12;
-    int v21, v22;
+    int v11, v12, v21, v22;
     memcpy(&v11, a + offset * 4, sizeof(int));
     memcpy(&v12, a + (1 - offset) * 4, sizeof(int));
     memcpy(&v21, b + offset * 4, sizeof(int));
@@ -452,9 +443,8 @@ void try_to_save_for_set(Buffer* buf, unsigned char** blk_saver, unsigned char* 
 
 int read_data(int addr)
 {
-    int i, j = 0;
-    int num, times;
     Buffer buf;
+    int i, j = 0, num, times;
     unsigned char* blk = NULL;
     /* init buffer */
     init_buf(&buf);
@@ -482,9 +472,8 @@ int read_data(int addr)
 }
 int read_a_data(int addr)
 {
-    int i;
-    int num, times;
     Buffer buf;
+    int i, num, times;
     unsigned char* blk = NULL;
     /* init buffer */
     init_buf(&buf);
@@ -559,10 +548,9 @@ int hash_index_base(char* rel)
 }
 int create_hash_index(int addr, int offset, int key, char* rel)
 {
+    Buffer buf;
     FILE* fp_try;
     char filename[128];
-
-    Buffer buf;
     unsigned char* blk;
     int have = 0, times, now, next;
 
