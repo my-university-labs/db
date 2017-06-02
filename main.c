@@ -1,3 +1,10 @@
+/**
+ * --*-- (◐‿◑) o(︶︿︶)o (◐‿◑) --*--
+ *
+ * completed by dongchangzhang
+ * At Harbin Institute of Technology
+ */
+
 #include "extmem.h"
 #include "operation.h"
 #include "utils.h"
@@ -150,7 +157,7 @@ void print_menu()
     printf("|                    ---------------                   |\n");
     printf("|  0. END                                              |\n");
     printf("|------------------------------------------------------|\n");
-    printf("Input You Choice Now: ");
+    printf("Input Your Choice Now: ");
 }
 int main(int argc, char** argv)
 {
