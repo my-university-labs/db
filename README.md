@@ -28,8 +28,9 @@
 ### 怎样运行
 
 ```shell
-git clone https://github.com/dongchangzhang/zdboperation
-cd zdboperation
+git clone https://github.com/dongchangzhang/dboperation-sim
+cd dboperation-sim
+make clean
 make
 ./main
 ```

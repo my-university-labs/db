@@ -1,5 +1,5 @@
 /**
- * --*-- (◐‿◑) o(︶︿︶)o (◐‿◑) --*--
+ * --*-- (◐‿◐) o(︶︿︶)o (◑‿◑) --*--
  *
  * completed by dongchangzhang
  * At Harbin Institute of Technology
