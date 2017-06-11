@@ -100,7 +100,7 @@ unsigned char* readBlockFromDisk(unsigned int addr, Buffer* buf)
     }
 
     sprintf(filename, "blk/%d.blk", addr);
-    FILE* fp = fopen(filename, "r");
+    FILE* fp = fopen(filename, "rb");
 
     if (!fp) {
         perror("Reading Block Failed!\n");
@@ -130,7 +130,7 @@ int writeBlockToDisk(unsigned char* blkPtr, unsigned int addr, Buffer* buf)
     unsigned char* bytePtr;
 
     sprintf(filename, "blk/%d.blk", addr);
-    FILE* fp = fopen(filename, "w");
+    FILE* fp = fopen(filename, "wb");
 
     if (!fp) {
         perror("Writing Block Failed!\n");
